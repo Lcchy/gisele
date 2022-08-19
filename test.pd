@@ -1,0 +1,7 @@
+#N canvas 950 21 960 1017 12;
+#X obj 324 49 midiin;
+#X obj 341 152 pack i i;
+#X obj 323 225 print;
+#X connect 0 0 1 0;
+#X connect 0 1 1 1;
+#X connect 1 0 2 0;
