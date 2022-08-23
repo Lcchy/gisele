@@ -10,10 +10,19 @@ fn main() -> Result<()> {
         .register_port("gisele_out", jack::MidiOut::default())
         .unwrap();
 
+    //TODO define a buffer holding midi notes information, shared between jack and osc process
+    // Could be a dynamic vector of Note{midiInfo, len}
+    // Define shared BPM
+    // Use BPM and some current_time in usec to compute if note should be played in current cycle (and at which frame?), start at 1 per BPM
+    // Print period_time, estimate if cycle is short enough for ms precision of onset
+
     // Define the Jack process (to refactor)
     let jack_process = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
         let mut out_buff = out_port.writer(ps);
         // out_buff.max_event_size()
+
+        let cy_times = ps.cycle_times();
+        cy_times.unwrap();
 
         // MIDI 90 3C 40 : Ch1 Note on P60 V64
         let note_on = RawMidi {
@@ -28,6 +37,7 @@ fn main() -> Result<()> {
         };
 
         out_buff.write(&note_on).unwrap();
+        out_buff.write(&note_off).unwrap();
 
         jack::Control::Continue
     };

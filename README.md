@@ -15,3 +15,4 @@
 ### Links:
 
 - Midi ref: https://www.cs.cmu.edu/~music/cmsip/readings/davids-midi-spec.htm
+- Jack API: https://jackaudio.org/api/group__TimeFunctions.html
