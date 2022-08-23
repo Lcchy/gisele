@@ -11,8 +11,8 @@ struct MidiNote {
     channel: u8,
     pitch: u8,
     velocity: u8,
-    /// usec
-    len: u64,
+    // / usec
+    // len: u64,
 }
 
 impl MidiNote {
@@ -34,7 +34,7 @@ impl MidiNote {
 
 struct Event {
     e_type: EventType,
-    /// Quarter note event position on bpm time scale
+    /// usec event position from start position
     time: u64,
 }
 
@@ -50,14 +50,14 @@ struct Params {
     /// Current position in the event buffer.
     /// Write: jack process, Read: -
     event_head: usize,
-    /// In usecs. To be reset on loop.
+    /// In usecs. To be reset on loop or start/stop
     /// Write: jack process, Read: -
     curr_time: u64,
     /// Write: osc process, Read: Jack process
     bpm: Arc<RwLock<u16>>,
-    /// In quarter notes of bpm. 16 = 1 measure
+    /// In usecs
     /// Write: osc process, Read: Jack process
-    loop_length: Arc<RwLock<u16>>,
+    loop_length: Arc<RwLock<u64>>,
     /// Write: osc process, Read: Jack process
     event_buffer: Arc<RwLock<EventBuffer>>,
     //TODO maybe bundle RwLocks?
@@ -83,7 +83,7 @@ fn main() -> Result<()> {
                 channel: 0,
                 pitch: 60,
                 velocity: 64,
-                len: 1_000_000,
+                // len: 1_000_000,
             }),
             time: 0,
         },
@@ -92,9 +92,9 @@ fn main() -> Result<()> {
                 channel: 0,
                 pitch: 60,
                 velocity: 64,
-                len: 1_000_000,
+                // len: 1_000_000,
             }),
-            time: 4,
+            time: 500_000,
         },
     ]));
     let bpm_arc = Arc::new(RwLock::new(120));
@@ -115,29 +115,27 @@ fn main() -> Result<()> {
 
         let cy_times = ps.cycle_times().unwrap();
 
+        println!("Period {}", cy_times.current_frames);
+
         let loop_len = params_ref.loop_length.read().unwrap();
-        let next_event_time = params_ref.event_buffer.read().unwrap()[params_ref.event_head].time;
+        let event_buffer = params_ref.event_buffer.read().unwrap();
+        let next_event = &event_buffer[params_ref.event_head];
 
-        //TODO switch to event time in usecs, do conversion on insertion
-        if 4 * next_event_time < cy_times.next_usecs % (loop_len.checked_mul(60u16).unwrap() as u64)
-        {
-            params_ref.event_head += 1;
-        }
-
-        // MIDI 90 3C 40 : Ch1 Note on P60 V64
-        let note_on = RawMidi {
+        // if next_event.time < cy_times.next_usecs % *loop_len {
+        // match next_event.e_type {
+        // EventType::MidiNoteOn(ref note) | EventType::MidiNoteOff(ref note) => {
+        let raw_midi = RawMidi {
+            //TODO add some frames here for precise timing, as a process cycle is 42ms, see jack doc
             time: ps.frames_since_cycle_start(),
             bytes: &[144, 60, 64],
+            // bytes: &note.get_raw_note_on_bytes(),
         };
-
-        // MIDI 80 3C 40 : Ch1 Note off P60 V64  | vel is arbitrary
-        let note_off = RawMidi {
-            time: ps.frames_since_cycle_start(),
-            bytes: &[128, 60, 64],
-        };
-
-        out_buff.write(&note_on).unwrap();
-        out_buff.write(&note_off).unwrap();
+        // println!("{:?}", note.get_raw_note_on_bytes());
+        out_buff.write(&raw_midi).unwrap();
+        // }
+        // }
+        // params_ref.event_head = (params_ref.event_head + 1) % event_buffer.len();
+        // }
 
         jack::Control::Continue
     };
