@@ -6,7 +6,7 @@ use std::{
 };
 
 struct MidiNote {
-    // on_off: bool,
+    on_off: bool,
     /// Channel, should be 0-15
     channel: u8,
     pitch: u8,
@@ -17,7 +17,11 @@ struct MidiNote {
 
 impl MidiNote {
     fn get_raw_note_on_bytes(&self) -> [u8; 3] {
-        [9 * 16 + self.channel, self.pitch, self.velocity]
+        [
+            (8 + self.on_off as u8) * 16 + self.channel,
+            self.pitch,
+            self.velocity,
+        ]
     }
 
     // fn get_raw_note_on<'a, 'b>(&'a self, cycle_frames: u32) -> RawMidi<'b>
@@ -39,8 +43,7 @@ struct Event {
 }
 
 enum EventType {
-    MidiNoteOn(MidiNote),
-    MidiNoteOff(MidiNote),
+    MidiNote(MidiNote),
 }
 
 type EventBuffer = Vec<Event>;
@@ -79,26 +82,26 @@ fn main() -> Result<()> {
     let event_buffer_arc = Arc::new(RwLock::new(vec![
         // TODO builder function
         Event {
-            e_type: EventType::MidiNoteOn(MidiNote {
+            e_type: EventType::MidiNote(MidiNote {
                 channel: 0,
                 pitch: 60,
                 velocity: 64,
-                // len: 1_000_000,
+                on_off: true,
             }),
             time: 0,
         },
         Event {
-            e_type: EventType::MidiNoteOff(MidiNote {
+            e_type: EventType::MidiNote(MidiNote {
                 channel: 0,
                 pitch: 60,
                 velocity: 64,
-                // len: 1_000_000,
+                on_off: false,
             }),
             time: 500_000,
         },
     ]));
     let bpm_arc = Arc::new(RwLock::new(120));
-    let loop_length_arc = Arc::new(RwLock::new(16));
+    let loop_length_arc = Arc::new(RwLock::new(2_000_000)); // 2sec = 4 bars at 120 bpm
     let params_arc = Params {
         event_head: 0,
         curr_time: 0,
@@ -115,27 +118,36 @@ fn main() -> Result<()> {
 
         let cy_times = ps.cycle_times().unwrap();
 
-        println!("Period {}", cy_times.current_frames);
+        // println!("Period {}", cy_times.current_frames);
 
         let loop_len = params_ref.loop_length.read().unwrap();
         let event_buffer = params_ref.event_buffer.read().unwrap();
         let next_event = &event_buffer[params_ref.event_head];
 
-        // if next_event.time < cy_times.next_usecs % *loop_len {
-        // match next_event.e_type {
-        // EventType::MidiNoteOn(ref note) | EventType::MidiNoteOff(ref note) => {
-        let raw_midi = RawMidi {
-            //TODO add some frames here for precise timing, as a process cycle is 42ms, see jack doc
-            time: ps.frames_since_cycle_start(),
-            bytes: &[144, 60, 64],
-            // bytes: &note.get_raw_note_on_bytes(),
-        };
-        // println!("{:?}", note.get_raw_note_on_bytes());
-        out_buff.write(&raw_midi).unwrap();
-        // }
-        // }
-        // params_ref.event_head = (params_ref.event_head + 1) % event_buffer.len();
-        // }
+        println!("Loop len {}", *loop_len);
+        println!("cy_times.next_usecs {}", cy_times.next_usecs);
+        println!("next_event.time {}", next_event.time);
+        println!(
+            "cy_times.next_usecs % *loop_len {}",
+            cy_times.next_usecs % *loop_len
+        );
+
+        if next_event.time < cy_times.next_usecs % *loop_len {
+            match next_event.e_type {
+                EventType::MidiNote(ref note) => {
+                    let raw_midi = RawMidi {
+                        //TODO add some frames here for precise timing, as a process cycle is 42ms, see jack doc
+                        time: ps.frames_since_cycle_start(),
+                        // bytes: &[144, 60, 64],
+                        bytes: &note.get_raw_note_on_bytes(),
+                    };
+                    // println!("{:?}", note.get_raw_note_on_bytes());
+                    out_buff.write(&raw_midi).unwrap();
+                    println!("Sending note {}",);
+                }
+            }
+            params_ref.event_head = (params_ref.event_head + 1) % event_buffer.len();
+        }
 
         jack::Control::Continue
     };
