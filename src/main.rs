@@ -55,7 +55,10 @@ struct Params {
     event_head: usize,
     /// In usecs. To be reset on loop or start/stop
     /// Write: jack process, Read: -
-    curr_time: u64,
+    curr_time_start: u64,
+    /// In usecs. To be reset on loop or start/stop
+    /// Write: jack process, Read: -
+    curr_time_end: u64,
     /// Write: osc process, Read: Jack process
     bpm: Arc<RwLock<u16>>,
     /// In usecs
@@ -104,7 +107,8 @@ fn main() -> Result<()> {
     let loop_length_arc = Arc::new(RwLock::new(2_000_000)); // 2sec = 4 bars at 120 bpm
     let params_arc = Params {
         event_head: 0,
-        curr_time: 0,
+        curr_time_start: 0,
+        curr_time_end: 0,
         event_buffer: event_buffer_arc,
         bpm: bpm_arc,
         loop_length: loop_length_arc,
@@ -113,41 +117,48 @@ fn main() -> Result<()> {
 
     // Define the Jack process
     let jack_process = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
+        // Max event buff size was measured as 32736
         let mut out_buff = out_port.writer(ps);
-        // out_buff.max_event_size()
-
-        let cy_times = ps.cycle_times().unwrap();
-
-        // println!("Period {}", cy_times.current_frames);
 
         let loop_len = params_ref.loop_length.read().unwrap();
         let event_buffer = params_ref.event_buffer.read().unwrap();
         let next_event = &event_buffer[params_ref.event_head];
 
-        println!("Loop len {}", *loop_len);
-        println!("cy_times.next_usecs {}", cy_times.next_usecs);
-        println!("next_event.time {}", next_event.time);
-        println!(
-            "cy_times.next_usecs % *loop_len {}",
-            cy_times.next_usecs % *loop_len
-        );
+        let cy_times = ps.cycle_times().unwrap();
+        params_ref.curr_time_end =
+            (params_ref.curr_time_end + (cy_times.next_usecs - cy_times.current_usecs)) % *loop_len;
 
-        if next_event.time < cy_times.next_usecs % *loop_len {
+        println!("next_event.time {}", next_event.time);
+        println!("Curr time {}", params_ref.curr_time_end);
+
+        // This shitty check should be removed once we map events to frames directly
+        let push_event = if params_ref.curr_time_start < params_ref.curr_time_end {
+            params_ref.curr_time_start <= next_event.time
+                && next_event.time < params_ref.curr_time_end
+        } else {
+            // Wrapping case
+            params_ref.curr_time_start <= next_event.time
+                || next_event.time < params_ref.curr_time_end
+        };
+
+        if push_event {
             match next_event.e_type {
                 EventType::MidiNote(ref note) => {
                     let raw_midi = RawMidi {
                         //TODO add some frames here for precise timing, as a process cycle is 42ms, see jack doc
+                        // This should allow to map events on specific frames, making the above if condition redundant
                         time: ps.frames_since_cycle_start(),
                         // bytes: &[144, 60, 64],
                         bytes: &note.get_raw_note_on_bytes(),
                     };
                     // println!("{:?}", note.get_raw_note_on_bytes());
                     out_buff.write(&raw_midi).unwrap();
-                    println!("Sending note {}",);
+                    println!("Sending note {:?}", &note.get_raw_note_on_bytes());
                 }
             }
             params_ref.event_head = (params_ref.event_head + 1) % event_buffer.len();
         }
+        params_ref.curr_time_start = params_ref.curr_time_end;
 
         jack::Control::Continue
     };
