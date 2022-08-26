@@ -6,9 +6,9 @@
 
 ### Steps:
 
-- Single midi notes out via Jack
-- Build buffer loop
-- Cellular arch?
+- Build a midi randomizer function: 2 fold: pitch, rythm
+- Make harmonic randomizer
+- Cellularize randomizer with tonal relationships
 - Add midi in for randomization seeding
 - Add osc output
 
