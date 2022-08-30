@@ -8,7 +8,8 @@
 
 - Build a midi randomizer function: 2 fold: pitch, rythm
 - Make harmonic randomizer
-- Cellularize randomizer with tonal relationships
+- Cellularize randomizer with minimalistic structures
+- generative random deviation from minimalistic base cell
 - Add midi in for randomization seeding
 - Add osc output
 

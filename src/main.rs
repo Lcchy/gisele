@@ -1,6 +1,10 @@
 use anyhow::Result;
 use jack::{Client, ClientOptions, RawMidi};
 use rand::Rng;
+use rust_music_theory::{
+    note::{Note, PitchClass},
+    scale::{Direction, Mode, Scale, ScaleType},
+};
 use std::{
     cmp::min,
     io,
@@ -139,8 +143,6 @@ fn main() -> Result<()> {
             } else {
                 // Wrapping case
                 println!("LOOPING");
-                println!("  Curr start time {}", params_ref.curr_time_start);
-                println!("  Curr end time {}", params_ref.curr_time_end);
                 params_ref.curr_time_start <= next_event.time
                     || next_event.time < params_ref.curr_time_end
             };
@@ -152,15 +154,10 @@ fn main() -> Result<()> {
                             //TODO add some frames here for precise timing, as a process cycle is 42ms, see jack doc
                             // This should allow to map events on specific frames, making the above if condition redundant
                             time: ps.frames_since_cycle_start(),
-                            // bytes: &[144, 60, 64],
                             bytes: &note.get_raw_note_on_bytes(),
                         };
-                        // println!("{:?}", note.get_raw_note_on_bytes());
                         out_buff.write(&raw_midi).unwrap();
                         println!("Sending note {:?}", &note.get_raw_note_on_bytes());
-                        println!("  Curr start time {}", params_ref.curr_time_start);
-                        println!("  Event time {:?}", next_event.time);
-                        println!("  Curr end time {}", params_ref.curr_time_end);
                     }
                 }
                 params_ref.event_head = (params_ref.event_head + 1) % event_buffer.len();
@@ -191,6 +188,16 @@ fn main() -> Result<()> {
 fn gen_rand_midi_vec(loop_len: u64, nb_events: u64) -> Vec<Event> {
     let mut rng = rand::thread_rng();
     let mut events_buffer = vec![];
+
+    let note = Note::new(PitchClass::As, 4);
+    let scale = Scale::new(
+        ScaleType::Diatonic,
+        PitchClass::C,
+        4,
+        Some(Mode::Ionian),
+        Direction::Ascending,
+    )
+    .unwrap();
 
     for _ in 0..nb_events {
         let velocity = rng.gen_range(0..127);
