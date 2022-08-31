@@ -21,6 +21,10 @@ struct MidiNote {
     // len: u64,
 }
 
+// impl Debug for MidiNote {
+
+// }
+
 impl MidiNote {
     fn get_raw_note_on_bytes(&self) -> [u8; 3] {
         [
@@ -56,7 +60,7 @@ type EventBuffer = Vec<Event>;
 
 struct SeqParams {
     bpm: u16,
-    /// In usecs
+    /// In usecs,//TODO to be quantized to whole note on bpm, with option to deviate
     loop_length: u64,
     nb_events: u64,
     // density
@@ -101,7 +105,8 @@ fn main() -> Result<()> {
     // );
     let nb_events = 100;
     let loop_length = 20_000_000; //2sec = 4 bars at 120 bpm
-    let mut event_buffer = gen_rand_midi_vec(loop_length, nb_events);
+    let bpm = 120;
+    let mut event_buffer = gen_rand_midi_vec(bpm, loop_length, nb_events);
     event_buffer.sort_by_key(|e| e.time);
     let params_arc = Params {
         event_head: 0,
@@ -109,7 +114,7 @@ fn main() -> Result<()> {
         curr_time_end: 0,
         event_buffer: Arc::new(RwLock::new(event_buffer)),
         seq_params: Arc::new(RwLock::new(SeqParams {
-            bpm: 120,
+            bpm,
             loop_length, //2sec = 4 bars at 120 bpm
             nb_events,
         })),
@@ -191,10 +196,11 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn gen_rand_midi_vec(loop_len: u64, nb_events: u64) -> Vec<Event> {
+fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> {
     let mut rng = rand::thread_rng();
     let mut events_buffer = vec![];
 
+    // Harmonic quantization
     let scale = Scale::new(
         ScaleType::Diatonic,
         PitchClass::C,
@@ -203,14 +209,18 @@ fn gen_rand_midi_vec(loop_len: u64, nb_events: u64) -> Vec<Event> {
         Direction::Ascending,
     )
     .unwrap();
-
     let scale_notes = scale.notes();
+
+    // Rythmic quantization
+    let rythm_precision = 1; // =16 -> 16th note, 1 note = 4bpm taps
+    let rythm_atom_duration = 4 * 60_000_000 / (rythm_precision * bpm) as u64; // In usecs
+    let nb_rythm_atoms = loop_len / rythm_atom_duration;
 
     for _ in 0..nb_events {
         let velocity = rng.gen_range(0..127);
         let pitch = rng.gen_range(0..scale_notes.len());
-        let time_offset = rng.gen_range(0..loop_len);
-        let note_len = rng.gen_range(0..1_000_000);
+        let rythm_offset = rythm_atom_duration * rng.gen_range(0..nb_rythm_atoms);
+        let note_len = rythm_atom_duration * rng.gen_range(0..nb_rythm_atoms / 2); //TODO set
         let event_midi_on = Event {
             e_type: EventType::MidiNote(MidiNote {
                 channel: 0,
@@ -218,7 +228,7 @@ fn gen_rand_midi_vec(loop_len: u64, nb_events: u64) -> Vec<Event> {
                 velocity,
                 on_off: true,
             }),
-            time: time_offset,
+            time: rythm_offset,
         };
         let event_midi_off = Event {
             e_type: EventType::MidiNote(MidiNote {
@@ -227,7 +237,8 @@ fn gen_rand_midi_vec(loop_len: u64, nb_events: u64) -> Vec<Event> {
                 velocity,
                 on_off: false,
             }),
-            time: (time_offset + note_len) % loop_len,
+            // % could be a footgun, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
+            time: (rythm_offset + note_len) % loop_len,
         };
         events_buffer.push(event_midi_on);
         events_buffer.push(event_midi_off);
