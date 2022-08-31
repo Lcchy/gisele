@@ -2,15 +2,15 @@ use anyhow::Result;
 use jack::{Client, ClientOptions, RawMidi};
 use rand::Rng;
 use rust_music_theory::{
-    note::{Note, PitchClass},
+    note::{Note, Notes, PitchClass},
     scale::{Direction, Mode, Scale, ScaleType},
 };
 use std::{
-    cmp::min,
     io,
     sync::{Arc, RwLock},
 };
 
+#[derive(Debug)]
 struct MidiNote {
     on_off: bool,
     /// Channel, should be 0-15
@@ -99,8 +99,8 @@ fn main() -> Result<()> {
     //     -(1. - event_density).ln(),
     //     loop_length_arc.as_ref().read().unwrap().checked_div(10.),
     // );
-    let nb_events = 10;
-    let loop_length = 2_000_000; //2sec = 4 bars at 120 bpm
+    let nb_events = 100;
+    let loop_length = 20_000_000; //2sec = 4 bars at 120 bpm
     let mut event_buffer = gen_rand_midi_vec(loop_length, nb_events);
     event_buffer.sort_by_key(|e| e.time);
     let params_arc = Params {
@@ -143,6 +143,9 @@ fn main() -> Result<()> {
             } else {
                 // Wrapping case
                 println!("LOOPING");
+                // println!("start {}", params_ref.curr_time_start);
+                // println!("event {}", next_event.time);
+                // println!("end {}", params_ref.curr_time_end);
                 params_ref.curr_time_start <= next_event.time
                     || next_event.time < params_ref.curr_time_end
             };
@@ -157,7 +160,10 @@ fn main() -> Result<()> {
                             bytes: &note.get_raw_note_on_bytes(),
                         };
                         out_buff.write(&raw_midi).unwrap();
-                        println!("Sending note {:?}", &note.get_raw_note_on_bytes());
+                        println!(
+                            "Sending midi note: Channel {:<5} Pitch {:<5} Vel {:<5} On/Off {:<5}",
+                            note.channel, note.pitch, note.velocity, note.on_off
+                        );
                     }
                 }
                 params_ref.event_head = (params_ref.event_head + 1) % event_buffer.len();
@@ -189,7 +195,6 @@ fn gen_rand_midi_vec(loop_len: u64, nb_events: u64) -> Vec<Event> {
     let mut rng = rand::thread_rng();
     let mut events_buffer = vec![];
 
-    let note = Note::new(PitchClass::As, 4);
     let scale = Scale::new(
         ScaleType::Diatonic,
         PitchClass::C,
@@ -199,15 +204,17 @@ fn gen_rand_midi_vec(loop_len: u64, nb_events: u64) -> Vec<Event> {
     )
     .unwrap();
 
+    let scale_notes = scale.notes();
+
     for _ in 0..nb_events {
         let velocity = rng.gen_range(0..127);
-        let pitch = rng.gen_range(0..127);
+        let pitch = rng.gen_range(0..scale_notes.len());
         let time_offset = rng.gen_range(0..loop_len);
         let note_len = rng.gen_range(0..1_000_000);
         let event_midi_on = Event {
             e_type: EventType::MidiNote(MidiNote {
                 channel: 0,
-                pitch,
+                pitch: note_to_midi_pitch(&scale_notes[pitch]),
                 velocity,
                 on_off: true,
             }),
@@ -216,14 +223,29 @@ fn gen_rand_midi_vec(loop_len: u64, nb_events: u64) -> Vec<Event> {
         let event_midi_off = Event {
             e_type: EventType::MidiNote(MidiNote {
                 channel: 0,
-                pitch,
+                pitch: note_to_midi_pitch(&scale_notes[pitch]),
                 velocity,
                 on_off: false,
             }),
-            time: min(time_offset + note_len, loop_len),
+            time: (time_offset + note_len) % loop_len,
         };
         events_buffer.push(event_midi_on);
         events_buffer.push(event_midi_off);
     }
     events_buffer
+}
+
+fn note_to_midi_pitch(note: &Note) -> u8 {
+    12 + note.octave * 12 + note.pitch_class.into_u8()
+}
+
+#[test]
+fn test() {
+    assert_eq!(
+        note_to_midi_pitch(&Note {
+            pitch_class: PitchClass::A,
+            octave: 4
+        }),
+        69
+    );
 }
