@@ -8,7 +8,7 @@
 
 - Quantize rythm
 - Make osc interface and pd patch for control: reseed and param ctrl
-- Introduce generative (live) randomness: random deviation from base harmonic and rythm quantization - split up into base and deviations
+- Start with the goal of the percussion slicer: Introduce generative (live) randomness: random deviation from base harmonic and rythm quantization - split up into base and deviations
 - Give random params like note_len etc a non uniform probability
 - Introduce cells/flows: randomness functions that can be used for deviation or base, harm or rythm:
   - euclidean
