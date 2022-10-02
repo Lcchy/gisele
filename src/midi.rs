@@ -6,7 +6,7 @@ use rust_music_theory::{
 
 use crate::{Event, EventType};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct MidiNote {
     pub on_off: bool,
     /// Channel, should be 0-15

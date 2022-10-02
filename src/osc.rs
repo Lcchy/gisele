@@ -1,11 +1,10 @@
-use std::{net::UdpSocket, str::FromStr, sync::Arc};
+use std::{net::UdpSocket, sync::Arc};
 
 use anyhow::bail;
-use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use rosc::OscMessage;
 
-use crate::{Params, SeqStatus};
+use crate::Params;
 
 /// Should be enough,See https://osc-dev.create.ucsb.narkive.com/TyotlluU/osc-udp-packet-sizes-for-interoperability
 /// and https://www.music.mcgill.ca/~gary/306/week9/osc.html
@@ -23,7 +22,7 @@ fn osc_handling(osc_msg: &OscMessage, params: &Arc<Params>) -> anyhow::Result<()
             let mut seq_params_mut = params.seq_params.write().unwrap();
             seq_params_mut.status = FromPrimitive::from_u32(status as u32)
                 .ok_or_else(|| anyhow::format_err!("OSC status arg was not in enum."))?;
-            println!("Grain Status set to {:?}", seq_params_mut.status);
+            println!("Sequencer Status set to {:?}", seq_params_mut.status);
         }
         // "/gisele/params" => {
         //     let mut grain_params_mut = params.grain.write().unwrap();
