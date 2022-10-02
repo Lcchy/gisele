@@ -7,8 +7,11 @@ edition = "2021"
 
 [dependencies]
 jack = "0.10.0"
-anyhow = "1.0.58"
+anyhow = "1.0.65"
 rosc = "0.9.0"
 wav = "1.0.0"
 rand = "0.8.5"
 rust-music-theory = "0.2"
+strum = { version = "0.24.1", features = ["derive"] }
+num-derive = "0.3.3"
+num-traits = "0.2.15"

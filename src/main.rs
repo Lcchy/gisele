@@ -1,14 +1,22 @@
 use anyhow::Result;
 use jack::{Client, ClientOptions, RawMidi};
 use midi::MidiNote;
+use num_derive::FromPrimitive;
 use std::{
     io,
+    net::UdpSocket,
     sync::{Arc, RwLock},
+    thread,
+};
+use strum::EnumString;
+
+use crate::{
+    midi::gen_rand_midi_vec,
+    osc::{osc_process_closure, OSC_PORT},
 };
 
-use crate::midi::gen_rand_midi_vec;
-
 mod midi;
+mod osc;
 
 pub struct Event {
     e_type: EventType,
@@ -22,7 +30,15 @@ enum EventType {
 
 type EventBuffer = Vec<Event>;
 
-struct SeqParams {
+#[derive(Clone, PartialEq, EnumString, Debug, FromPrimitive)]
+enum SeqStatus {
+    Stop,
+    Start,
+    Pause,
+}
+
+pub struct SeqParams {
+    status: SeqStatus,
     bpm: u16,
     /// In usecs,//TODO to be quantized to whole note on bpm, with option to deviate
     loop_length: u64,
@@ -30,22 +46,35 @@ struct SeqParams {
     // density
 }
 
-#[derive(Clone)]
-struct Params {
-    /// Current position in the event buffer.
-    /// Write: jack process, Read: -
-    event_head: usize,
-    /// In usecs. To be reset on loop or start/stop
-    /// Write: jack process, Read: -
-    j_window_time_start: u64,
-    /// In usecs. To be reset on loop or start/stop
-    /// Write: jack process, Read: -
-    j_window_time_end: u64,
+pub struct Params {
     /// Write: osc process, Read: Jack process
     seq_params: Arc<RwLock<SeqParams>>,
     /// Events should be ordered by their times
     /// Write: osc process, Read: Jack process
     event_buffer: Arc<RwLock<EventBuffer>>,
+}
+
+/// Additionnal SeqParams, only to be set and read by the jack Cycle
+struct SeqInternal {
+    /// Current position in the event buffer.
+    /// Write: jack process, Read: -
+    event_head: usize,
+    /// Position of current jack cycle in sequencing time loop.
+    /// In usecs. To be reset on loop or start/stop
+    /// Write: jack process, Read: -
+    j_window_time_start: u64,
+    /// Position of current jack cycle in sequencing time loop.
+    /// In usecs. To be reset on loop or start/stop
+    /// Write: jack process, Read: -
+    j_window_time_end: u64,
+}
+
+impl SeqInternal {
+    fn stop_reset(&mut self) {
+        self.event_head = 0;
+        self.j_window_time_start = 0;
+        self.j_window_time_end = 0;
+    }
 }
 
 fn main() -> Result<()> {
@@ -72,31 +101,45 @@ fn main() -> Result<()> {
     let bpm = 120;
     let mut event_buffer = gen_rand_midi_vec(bpm, loop_length, nb_events);
     event_buffer.sort_by_key(|e| e.time);
-    let params_arc = Params {
-        event_head: 0,
-        j_window_time_start: 0,
-        j_window_time_end: 0,
+    let params_arc = Arc::new(Params {
         event_buffer: Arc::new(RwLock::new(event_buffer)),
         seq_params: Arc::new(RwLock::new(SeqParams {
+            status: SeqStatus::Stop,
             bpm,
             loop_length, //2sec = 4 bars at 120 bpm
             nb_events,
         })),
+    });
+    let params_ref = params_arc.clone();
+    let mut seq_int = SeqInternal {
+        event_head: 0,
+        j_window_time_start: 0,
+        j_window_time_end: 0,
     };
-    let mut params_ref = params_arc;
 
     // Define the Jack process
     let jack_process = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
+        let seq_params = params_ref.seq_params.read().unwrap();
+        let loop_len = seq_params.loop_length;
+        let event_buffer = params_ref.event_buffer.read().unwrap();
+
+        // Do nothing if paused
+        if seq_params.status == SeqStatus::Pause {
+            return jack::Control::Continue;
+        }
+        if seq_params.status == SeqStatus::Stop {
+            seq_int.stop_reset();
+            return jack::Control::Continue;
+
+            // jack::Control::Continue
+        }
+
         // Max event buff size was measured as 32736
         let mut out_buff = out_port.writer(ps);
 
-        let loop_len = params_ref.seq_params.read().unwrap().loop_length;
-        let event_buffer = params_ref.event_buffer.read().unwrap();
-
         let cy_times = ps.cycle_times().unwrap();
-        params_ref.j_window_time_end = (params_ref.j_window_time_end
-            + (cy_times.next_usecs - cy_times.current_usecs))
-            % loop_len;
+        seq_int.j_window_time_end =
+            (seq_int.j_window_time_end + (cy_times.next_usecs - cy_times.current_usecs)) % loop_len;
 
         // println!("next_event.time {}", next_event.time);
         // println!("Curr time {}", params_ref.curr_time_end);
@@ -105,19 +148,19 @@ fn main() -> Result<()> {
         // println!("frames sunce start {}", ps.frames_since_cycle_start());
 
         loop {
-            let next_event = &event_buffer[params_ref.event_head];
+            let next_event = &event_buffer[seq_int.event_head];
             // This shitty check should be removed once we map events to frames directly
-            let push_event = if params_ref.j_window_time_start < params_ref.j_window_time_end {
-                params_ref.j_window_time_start <= next_event.time
-                    && next_event.time < params_ref.j_window_time_end
+            let push_event = if seq_int.j_window_time_start < seq_int.j_window_time_end {
+                seq_int.j_window_time_start <= next_event.time
+                    && next_event.time < seq_int.j_window_time_end
             } else {
                 // Wrapping case
                 println!("LOOPING");
                 // println!("start {}", params_ref.curr_time_start);
                 // println!("event {}", next_event.time);
                 // println!("end {}", params_ref.curr_time_end);
-                params_ref.j_window_time_start <= next_event.time
-                    || next_event.time < params_ref.j_window_time_end
+                seq_int.j_window_time_start <= next_event.time
+                    || next_event.time < seq_int.j_window_time_end
             };
 
             if push_event {
@@ -136,13 +179,13 @@ fn main() -> Result<()> {
                         );
                     }
                 }
-                params_ref.event_head = (params_ref.event_head + 1) % event_buffer.len();
+                seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();
             } else {
                 break;
             }
         }
 
-        params_ref.j_window_time_start = params_ref.j_window_time_end;
+        seq_int.j_window_time_start = seq_int.j_window_time_end;
         // println!("frames sunce start {}", ps.frames_since_cycle_start());
 
         jack::Control::Continue
@@ -152,11 +195,18 @@ fn main() -> Result<()> {
     let process = jack::ClosureProcessHandler::new(jack_process);
     let active_client = jclient.activate_async((), process).unwrap();
 
+    // Start the OSC listening thread
+    let udp_socket = UdpSocket::bind(format!("127.0.0.1:{}", OSC_PORT))?;
+    let osc_process = osc_process_closure(udp_socket, params_arc);
+    let osc_handler = thread::spawn(osc_process);
+
     // Wait for user input to quit
     println!("Press enter/return to quit...");
     let mut user_input = String::new();
     io::stdin().read_line(&mut user_input).ok();
     active_client.deactivate().unwrap();
+    let osc_res = osc_handler.join();
+    println!("OSC shutdown: {:?}", osc_res);
 
     Ok(())
 }

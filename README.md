@@ -6,10 +6,10 @@
 
 ### Steps:
 
-- Quantize rythm
 - Make osc interface and pd patch for control: reseed and param ctrl
 - Start with the goal of the percussion slicer: Introduce generative (live) randomness: random deviation from base harmonic and rythm quantization - split up into base and deviations
 - Give random params like note_len etc a non uniform probability
+- Maybe going to need a seperate thread for reseeding of EventBuffer? Or keep it in jack thread?
 - Introduce cells/flows: randomness functions that can be used for deviation or base, harm or rythm:
   - euclidean
   - arpeggio
@@ -20,6 +20,7 @@
 - generative random deviation from minimalistic base cell
 - Add midi in for randomization seeding
 - Add osc output
+- Clean up unwraps
 
 ### Links:
 

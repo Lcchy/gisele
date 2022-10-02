@@ -87,7 +87,7 @@ pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> 
                 velocity,
                 on_off: false,
             }),
-            // % could be a footgun, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
+            // % could be a problem, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
             time: (rythm_offset + note_len) % loop_len,
         };
         events_buffer.push(event_midi_on);
