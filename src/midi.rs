@@ -4,7 +4,7 @@ use rust_music_theory::{
     scale::{Direction, Mode, Scale, ScaleType},
 };
 
-use crate::{Event, EventType};
+use crate::{seq::Event, EventType};
 
 #[derive(Debug, Copy, Clone)]
 pub struct MidiNote {
@@ -13,13 +13,7 @@ pub struct MidiNote {
     pub channel: u8,
     pub pitch: u8,
     pub velocity: u8,
-    // / usec
-    // len: u64,
 }
-
-// impl Debug for MidiNote {
-
-// }
 
 impl MidiNote {
     pub fn get_raw_note_on_bytes(&self) -> [u8; 3] {
@@ -29,17 +23,6 @@ impl MidiNote {
             self.velocity,
         ]
     }
-
-    // fn get_raw_note_on<'a, 'b>(&'a self, cycle_frames: u32) -> RawMidi<'b>
-    // where
-    //     'a: 'b,
-    // {
-    //     RawMidi {
-    //         time: cycle_frames,
-    //         bytes: &[9 * 16 + self.channel, self.pitch, self.velocity],
-    //         // bytes: &self.get_raw_note_on_bytes().to_owned(),
-    //     }
-    // }
 }
 
 fn note_to_midi_pitch(note: &Note) -> u8 {
@@ -93,6 +76,7 @@ pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> 
         events_buffer.push(event_midi_on);
         events_buffer.push(event_midi_off);
     }
+    events_buffer.sort_by_key(|e| e.time);
     events_buffer
 }
 

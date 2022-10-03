@@ -22,6 +22,11 @@
 - Add osc output
 - Clean up unwraps
 
+### TODO:
+
+- add some frames here for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames, making the above if condition redundant
+- LATER: have a central sequencer process that pushes out events to jack midi or osc sender
+
 ### Links:
 
 - Midi ref: https://www.cs.cmu.edu/~music/cmsip/readings/davids-midi-spec.htm
