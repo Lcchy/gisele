@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use num_derive::FromPrimitive;
 use strum::EnumString;
 
-use crate::midi::MidiNote;
+use crate::midi::{gen_rand_midi_vec, MidiNote};
 
 pub struct Sequencer {
     /// Write: osc process, Read: Jack process
@@ -12,6 +12,23 @@ pub struct Sequencer {
     /// Events should be ordered by their times
     /// Write: TBD, Read: Jack process
     pub event_buffer: Arc<RwLock<Vec<Event>>>,
+}
+
+impl Sequencer {
+    pub fn new(bpm: u16, loop_length: u64, nb_events: u64) -> Self {
+        let seq_params = SeqParams {
+            status: SeqStatus::Stop,
+            bpm,
+            loop_length,
+            nb_events,
+        };
+        let event_buffer =
+            gen_rand_midi_vec(seq_params.bpm, seq_params.loop_length, seq_params.nb_events);
+        Sequencer {
+            event_buffer: Arc::new(RwLock::new(event_buffer)),
+            params: Arc::new(RwLock::new(seq_params)),
+        }
+    }
 }
 
 pub struct Event {
@@ -56,15 +73,12 @@ pub struct SeqInternal {
     /// Allows for cycle skipping when on pause/stop.
     pub status: SeqInternalStatus,
     /// Current position in the event buffer.
-    /// Write: jack process, Read: -
     pub event_head: usize,
     /// Position of current jack cycle in sequencing time loop.
     /// In usecs. To be reset on loop or start/stop
-    /// Write: jack process, Read: -
     pub j_window_time_start: u64,
     /// Position of current jack cycle in sequencing time loop.
     /// In usecs. To be reset on loop or start/stop
-    /// Write: jack process, Read: -
     pub j_window_time_end: u64,
 }
 

@@ -31,7 +31,6 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 .int()
                 .ok_or_else(|| anyhow::format_err!("OSC bpm arg wass not recognized."))?
                 as u16;
-            //TODO make seq time bpm based
         }
         "/gisele/set_loop_length" => {
             let mut params_mut = seq.params.write().unwrap();

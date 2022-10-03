@@ -9,7 +9,9 @@ A generative midi sequencer running on Jack, controlled via OSC.
 ### Steps:
 
 - Make osc interface and pd patch for control: reseed and param ctrl
+
 - Start with the goal of the percussion slicer: Introduce generative (live) randomness: random deviation from base harmonic and rythm quantization - split up into base and deviations
+  - Maybe have a stream of events consumed in the jack process, filled by external threads for random deviation generation, based on base sequence stored as Vec<Event>. Use a dynamic stream height, flush when reseeding or so
 - Give random params like note_len etc a non uniform probability
 - Maybe going to need a seperate thread for reseeding of EventBuffer? Or keep it in jack thread?
 - Introduce cells/flows: randomness functions that can be used for deviation or base, harm or rythm:

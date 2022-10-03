@@ -1,21 +1,16 @@
 use anyhow::Result;
 use jack::{Client, ClientOptions, RawMidi};
-use midi::gen_rand_midi_vec;
 use osc::{osc_process_closure, OSC_PORT};
-use seq::SeqParams;
 use seq::{EventType, SeqInternal, SeqInternalStatus, SeqStatus};
-use std::{
-    io,
-    net::UdpSocket,
-    sync::{Arc, RwLock},
-    thread,
-};
+use std::{io, net::UdpSocket, sync::Arc, thread};
 
 use crate::seq::Sequencer;
 
 mod midi;
 mod osc;
 mod seq;
+
+const INIT_BPM: u16 = 120;
 
 fn main() -> Result<()> {
     // Set up jack ports
@@ -26,18 +21,7 @@ fn main() -> Result<()> {
         .unwrap();
 
     // Init values
-    let seq_params = SeqParams {
-        status: SeqStatus::Stop,
-        bpm: 120,
-        loop_length: 20_000_000, //2sec = 4 bars at 120 bpm
-        nb_events: 100,
-    };
-    let event_buffer =
-        gen_rand_midi_vec(seq_params.bpm, seq_params.loop_length, seq_params.nb_events);
-    let seq_arc = Arc::new(Sequencer {
-        event_buffer: Arc::new(RwLock::new(event_buffer)),
-        params: Arc::new(RwLock::new(seq_params)),
-    });
+    let seq_arc = Arc::new(Sequencer::new(INIT_BPM, 20_000_000, 100));
     let seq_ref = seq_arc.clone();
     let mut seq_int = SeqInternal::new();
 
@@ -58,8 +42,11 @@ fn main() -> Result<()> {
         let loop_len = seq_params.loop_length;
         let cy_times = ps.cycle_times().unwrap();
 
-        seq_int.j_window_time_end =
-            (seq_int.j_window_time_end + (cy_times.next_usecs - cy_times.current_usecs)) % loop_len;
+        // we increment the current jack process cycle time window dynamically to allow speed playback variations
+        seq_int.j_window_time_end = (seq_int.j_window_time_end
+            + (((cy_times.next_usecs - cy_times.current_usecs) as f64)
+                * (seq_params.bpm as f64 / INIT_BPM as f64)) as u64)
+            % loop_len;
 
         // println!("next_event.time {}", next_event.time);
         // println!("Curr time {}", params_ref.curr_time_end);
