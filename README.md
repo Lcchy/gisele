@@ -1,3 +1,5 @@
+A generative midi sequencer running on Jack, controlled via OSC.
+
 ### Run on Fedora36
 
 - Install `pipewire-jack-audio-connection-kit-devel` as a dep for building
@@ -20,12 +22,12 @@
 - generative random deviation from minimalistic base cell
 - Add midi in for randomization seeding
 - Add osc output
-- Clean up unwraps
 
 ### TODO:
 
 - add some frames here for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames, making the above if condition redundant
 - LATER: have a central sequencer process that pushes out events to jack midi or osc sender
+- Clean up unwraps
 
 ### Links:
 

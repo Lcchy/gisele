@@ -1,7 +1,18 @@
+use std::sync::{Arc, RwLock};
+
 use num_derive::FromPrimitive;
 use strum::EnumString;
 
 use crate::midi::MidiNote;
+
+pub struct Sequencer {
+    /// Write: osc process, Read: Jack process
+    pub params: Arc<RwLock<SeqParams>>,
+    /// Event Bufffer
+    /// Events should be ordered by their times
+    /// Write: TBD, Read: Jack process
+    pub event_buffer: Arc<RwLock<Vec<Event>>>,
+}
 
 pub struct Event {
     pub e_type: EventType,

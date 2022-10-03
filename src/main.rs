@@ -3,7 +3,7 @@ use jack::{Client, ClientOptions, RawMidi};
 use midi::gen_rand_midi_vec;
 use osc::{osc_process_closure, OSC_PORT};
 use seq::SeqParams;
-use seq::{Event, EventType, SeqInternal, SeqInternalStatus, SeqStatus};
+use seq::{EventType, SeqInternal, SeqInternalStatus, SeqStatus};
 use std::{
     io,
     net::UdpSocket,
@@ -11,18 +11,11 @@ use std::{
     thread,
 };
 
+use crate::seq::Sequencer;
+
 mod midi;
 mod osc;
 mod seq;
-
-pub struct Params {
-    /// Write: osc process, Read: Jack process
-    seq_params: Arc<RwLock<SeqParams>>,
-    /// Event Bufffer
-    /// Events should be ordered by their times
-    /// Write: TBD, Read: Jack process
-    event_buffer: Arc<RwLock<Vec<Event>>>,
-}
 
 fn main() -> Result<()> {
     // Set up jack ports
@@ -41,16 +34,16 @@ fn main() -> Result<()> {
     };
     let event_buffer =
         gen_rand_midi_vec(seq_params.bpm, seq_params.loop_length, seq_params.nb_events);
-    let params_arc = Arc::new(Params {
+    let seq_arc = Arc::new(Sequencer {
         event_buffer: Arc::new(RwLock::new(event_buffer)),
-        seq_params: Arc::new(RwLock::new(seq_params)),
+        params: Arc::new(RwLock::new(seq_params)),
     });
-    let params_ref = params_arc.clone();
+    let seq_ref = seq_arc.clone();
     let mut seq_int = SeqInternal::new();
 
     // Define the Jack process
     let jack_process = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
-        let seq_params = params_ref.seq_params.read().unwrap();
+        let seq_params = seq_ref.params.read().unwrap();
 
         // Handle Sequencer statuses
         if seq_params.status == SeqStatus::Start {
@@ -60,7 +53,7 @@ fn main() -> Result<()> {
             return jack::Control::Continue;
         }
 
-        let event_buffer = &*params_ref.event_buffer.read().unwrap();
+        let event_buffer = &*seq_ref.event_buffer.read().unwrap();
         let mut out_buff = out_port.writer(ps);
         let loop_len = seq_params.loop_length;
         let cy_times = ps.cycle_times().unwrap();
@@ -77,6 +70,7 @@ fn main() -> Result<()> {
         let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;
         loop {
             let next_event = &event_buffer[seq_int.event_head];
+
             let mut push_event = seq_int.event_in_cycle(next_event.time);
 
             // We let the seq play once through all midi off notes when halting.
@@ -141,7 +135,7 @@ fn main() -> Result<()> {
 
     // Start the OSC listening thread
     let udp_socket = UdpSocket::bind(format!("127.0.0.1:{}", OSC_PORT))?;
-    let osc_process = osc_process_closure(udp_socket, params_arc);
+    let osc_process = osc_process_closure(udp_socket, seq_arc);
     let osc_handler = thread::spawn(osc_process);
 
     // Wait for user input to quit
