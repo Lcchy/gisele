@@ -45,7 +45,7 @@ pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> 
     let scale_notes = scale.notes();
 
     // Rythmic quantization
-    let rythm_precision = 1; // =16 -> 16th note, 1 note = 4bpm taps
+    let rythm_precision = 16; // =16 -> 16th note, 1 note = 4bpm taps
     let rythm_atom_duration = 4 * 60_000_000 / (rythm_precision * bpm) as u64; // In usecs
     let nb_rythm_atoms = loop_len / rythm_atom_duration;
 

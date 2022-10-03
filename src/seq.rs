@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    arch::x86_64::_mm_loaddup_pd,
+    sync::{Arc, RwLock},
+};
 
 use num_derive::FromPrimitive;
 use strum::EnumString;
@@ -102,7 +105,11 @@ impl SeqInternal {
         self.j_window_time_start = 0;
         self.j_window_time_end = 0;
     }
-    pub fn event_in_cycle(&self, event_time: u64) -> bool {
+    pub fn event_in_cycle(&self, event_time: u64, loop_length: u64) -> bool {
+        // println!(
+        //     "Window start {} | Window end {}",
+        //     self.j_window_time_start, self.j_window_time_end
+        // );
         if self.j_window_time_start < self.j_window_time_end {
             self.j_window_time_start <= event_time && event_time < self.j_window_time_end
         } else {

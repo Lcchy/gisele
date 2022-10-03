@@ -1,5 +1,7 @@
 use anyhow::Result;
-use jack::{Client, ClientOptions, RawMidi};
+use jack::{
+    jack_sys::jackctl_parameter_get_enum_constraint_description, Client, ClientOptions, RawMidi,
+};
 use osc::{osc_process_closure, OSC_PORT};
 use seq::{EventType, SeqInternal, SeqInternalStatus, SeqStatus};
 use std::{io, net::UdpSocket, sync::Arc, thread};
@@ -57,8 +59,9 @@ fn main() -> Result<()> {
         let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;
         loop {
             let next_event = &event_buffer[seq_int.event_head];
+            // println!("Next note Time {}", next_event.time);
 
-            let mut push_event = seq_int.event_in_cycle(next_event.time);
+            let mut push_event = seq_int.event_in_cycle(next_event.time, seq_params.loop_length);
 
             // We let the seq play once through all midi off notes when halting.
             let mut jump_event = false;
@@ -72,8 +75,11 @@ fn main() -> Result<()> {
                     }
                 }
             };
+            jump_event = jump_event || seq_params.loop_length < next_event.time;
 
-            if push_event {
+            if jump_event {
+                seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();
+            } else if push_event {
                 match next_event.e_type {
                     EventType::MidiNote(ref note) => {
                         let raw_midi = RawMidi {
@@ -83,21 +89,19 @@ fn main() -> Result<()> {
                         // Max event buff size was measured at ~32kbits ? In practice, 800-2200 midi msgs
                         out_buff.write(&raw_midi).unwrap();
                         println!(
-                            "Sending midi note: Channel {:<5} Pitch {:<5} Vel {:<5} On/Off {:<5}",
-                            note.channel, note.pitch, note.velocity, note.on_off
+                            "Sending midi note: Channel {:<5} Pitch {:<5} Vel {:<5} On/Off {:<5} Note Time {}",
+                            note.channel, note.pitch, note.velocity, note.on_off, next_event.time
                         );
                     }
                 }
                 seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();
-            } else if jump_event {
-                seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();
-                continue;
             } else {
+                // Complete the current cycle when reaching a note to be played in the next one
                 break;
             }
 
-            // Stop playing when halting after having played all notes off (one full loop)
-            if halting && seq_int.event_head == event_head_before {
+            // Stop playing when having completed a whole loop
+            if seq_int.event_head == event_head_before {
                 break;
             }
         }

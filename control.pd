@@ -1,7 +1,7 @@
 #N canvas -10 32 1920 2079 12;
 #X msg 25 65 connect 127.0.0.1 34254;
 #X msg 240 70 0;
-#X obj 401 323 netsend -u -b;
+#X obj 322 221 netsend -u -b;
 #X obj 664 42 hsl 128 15 0 500000 0 0 empty empty empty -2 -8 0 10
 #fcfcfc #000000 #000000 0 1;
 #X obj 570 102 hsl 128 15 0 500000 0 0 empty empty empty -2 -8 0 10
@@ -15,6 +15,19 @@
 #X text 236 42 Stop;
 #X text 297 41 Start;
 #X text 357 41 Pause;
+#X obj 21 289 oscformat -f i /gisele/set_bpm;
+#X msg 47 208 120;
+#X msg 104 209 30;
+#X msg 155 211 90;
+#X msg 203 211 400;
+#X obj 448 393 oscformat -f i /gisele/set_loop_length;
+#X msg 541 335 2e+06;
+#X msg 620 336 2e+07;
+#X msg 460 338 200000;
+#X msg 514 308 1e+06;
+#X msg 570 302 1.5e+06;
+#X msg 577 362 1.2e+06;
+#X msg 245 213 800;
 #X connect 0 0 2 0;
 #X connect 1 0 8 0;
 #X connect 3 0 6 0;
@@ -22,7 +35,19 @@
 #X connect 5 0 7 0;
 #X connect 6 0 5 0;
 #X connect 6 1 5 1;
-#X connect 7 0 2 0;
 #X connect 8 0 2 0;
 #X connect 9 0 8 0;
 #X connect 10 0 8 0;
+#X connect 14 0 2 0;
+#X connect 15 0 14 0;
+#X connect 16 0 14 0;
+#X connect 17 0 14 0;
+#X connect 18 0 14 0;
+#X connect 19 0 2 0;
+#X connect 20 0 19 0;
+#X connect 21 0 19 0;
+#X connect 22 0 19 0;
+#X connect 23 0 19 0;
+#X connect 24 0 19 0;
+#X connect 25 0 19 0;
+#X connect 26 0 14 0;
