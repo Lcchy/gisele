@@ -39,6 +39,14 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 .int()
                 .ok_or_else(|| anyhow::format_err!("OSC loop_len arg was not recognized."))?
                 as u64;
+        }
+        "/gisele/set_loop_length_bars" => {
+            let mut params_mut = seq.params.write().unwrap();
+            params_mut.loop_length = osc_msg.args[0]
+                .to_owned()
+                .int()
+                .ok_or_else(|| anyhow::format_err!("OSC loop_len arg was not recognized."))?
+                as u64;
             //TODO
         }
         "/gisele/set_nb_events" => {
@@ -48,10 +56,12 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 .int()
                 .ok_or_else(|| anyhow::format_err!("OSC nb_events arg was not recognized."))?
                 as u64;
-            //TODO
+            seq.reseed()
         }
         "/gisele/reseed" => {
-            let mut event_buffer_mut = seq.event_buffer.write().unwrap();
+            println!("Reseeding..");
+            seq.reseed();
+            println!("Finished reseeding");
         }
         _ => bail!("OSC routing was not recognized"),
     }

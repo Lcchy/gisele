@@ -1,7 +1,5 @@
 use anyhow::Result;
-use jack::{
-    jack_sys::jackctl_parameter_get_enum_constraint_description, Client, ClientOptions, RawMidi,
-};
+use jack::{Client, ClientOptions, RawMidi};
 use osc::{osc_process_closure, OSC_PORT};
 use seq::{EventType, SeqInternal, SeqInternalStatus, SeqStatus};
 use std::{io, net::UdpSocket, sync::Arc, thread};
@@ -61,7 +59,7 @@ fn main() -> Result<()> {
             let next_event = &event_buffer[seq_int.event_head];
             // println!("Next note Time {}", next_event.time);
 
-            let mut push_event = seq_int.event_in_cycle(next_event.time, seq_params.loop_length);
+            let mut push_event = seq_int.event_in_cycle(next_event.time);
 
             // We let the seq play once through all midi off notes when halting.
             let mut jump_event = false;

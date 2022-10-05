@@ -14,7 +14,7 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
 ### Steps:
 
-- Make osc interface and pd patch for control: reseed and param ctrl
+- Big refactor: Add a note_ref_buffer, that is the one being actually played. Instead of of a thousand conditions
 - Add random deviations from Vec<Event> base: add gen_rand_note() in jack_process
 - Give random params like note_len etc a non uniform probability
 - Introduce cells/flows: randomness functions that can be used for deviation or base, harm or rythm:

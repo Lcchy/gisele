@@ -1,7 +1,4 @@
-use std::{
-    arch::x86_64::_mm_loaddup_pd,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use num_derive::FromPrimitive;
 use strum::EnumString;
@@ -31,6 +28,13 @@ impl Sequencer {
             event_buffer: Arc::new(RwLock::new(event_buffer)),
             params: Arc::new(RwLock::new(seq_params)),
         }
+    }
+
+    pub fn reseed(&self) {
+        let seq_params = self.params.read().unwrap();
+        let mut event_buffer_mut = self.event_buffer.write().unwrap();
+        *event_buffer_mut =
+            gen_rand_midi_vec(seq_params.bpm, seq_params.loop_length, seq_params.nb_events);
     }
 }
 
@@ -105,7 +109,7 @@ impl SeqInternal {
         self.j_window_time_start = 0;
         self.j_window_time_end = 0;
     }
-    pub fn event_in_cycle(&self, event_time: u64, loop_length: u64) -> bool {
+    pub fn event_in_cycle(&self, event_time: u64) -> bool {
         // println!(
         //     "Window start {} | Window end {}",
         //     self.j_window_time_start, self.j_window_time_end
