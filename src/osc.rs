@@ -88,10 +88,10 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
 }
 
 /// Returns a closure that runs the main osc receiving loop
-pub fn osc_process_closure(
+pub fn osc_process_closure<'a>(
     udp_socket: UdpSocket,
-    params_ref: Arc<Sequencer>,
-) -> impl FnOnce() -> anyhow::Result<()> {
+    params_ref: Arc<Sequencer<'a>>,
+) -> impl FnOnce() -> anyhow::Result<()> + 'a {
     move || {
         let mut rec_buffer = [0; OSC_BUFFER_LEN];
         loop {

@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
 use num_derive::FromPrimitive;
 use rust_music_theory::note::{Note, PitchClass};
@@ -6,16 +9,20 @@ use strum::EnumString;
 
 use crate::midi::{gen_rand_midi_vec, MidiNote};
 
-pub struct Sequencer {
+pub struct Sequencer<'a> {
     /// Write: osc process, Read: Jack process
     pub params: Arc<RwLock<SeqParams>>,
     /// Event Bufffer
     /// Events should be ordered by their times
     /// Write: TBD, Read: Jack process
     pub event_buffer: Arc<RwLock<Vec<Event>>>,
+    /// Event Bufffer
+    /// Events should be ordered by their times
+    /// Write: TBD, Read: Jack process
+    pub event_refs_buffer: Arc<RwLock<Vec<&'a Event>>>,
 }
 
-impl Sequencer {
+impl Sequencer<'_> {
     pub fn new(bpm: u16, loop_length: u64, nb_events: u64) -> Self {
         let seq_params = SeqParams {
             status: SeqStatus::Stop,
@@ -29,9 +36,12 @@ impl Sequencer {
             note_length: 5,
         };
         let event_buffer = gen_rand_midi_vec(&seq_params);
+
+        let event_refs_buffer = gen_events_refs_buffer(event_buffer);
         Sequencer {
             event_buffer: Arc::new(RwLock::new(event_buffer)),
             params: Arc::new(RwLock::new(seq_params)),
+            event_refs_buffer: Arc::new(RwLock::new(event_refs_buffer)),
         }
     }
 
@@ -40,6 +50,12 @@ impl Sequencer {
         let mut event_buffer_mut = self.event_buffer.write().unwrap();
         *event_buffer_mut = gen_rand_midi_vec(&seq_params);
     }
+}
+
+pub fn gen_events_refs_buffer<'a>(event_buffer: Vec<Event>) -> Vec<impl Deref<Target = Event>> {
+    let mut events_ref_buffer = vec![];
+    events_ref_buffer.push(&event_buffer[0]);
+    events_ref_buffer
 }
 
 pub struct Event {
