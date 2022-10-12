@@ -36,5 +36,6 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
 ### Links:
 
+- Inspiration: https://www.youtube.com/watch?v=JAQXqoKRfzs
 - Midi ref: https://www.cs.cmu.edu/~music/cmsip/readings/davids-midi-spec.htm
 - Jack API: https://jackaudio.org/api/group__TimeFunctions.html
