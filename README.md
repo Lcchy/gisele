@@ -39,5 +39,9 @@ A generative midi sequencer running on Jack, controlled via OSC.
 - Inspirations: 
   - Polyend Play https://www.youtube.com/watch?v=JAQXqoKRfzs
   - Torso T1
+  - https://llllllll.co/t/generative-sequencers/19155
+  - https://llllllll.co/t/generative-systems/4142/4
+  - https://llllllll.co/t/emergence-and-generative-art/2117
+  - https://www.youtube.com/watch?v=JPFv3adyLB4
 - Midi ref: https://www.cs.cmu.edu/~music/cmsip/readings/davids-midi-spec.htm
 - Jack API: https://jackaudio.org/api/group__TimeFunctions.html
