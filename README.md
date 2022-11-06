@@ -29,7 +29,7 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
 ### TODO:
 
-- add some frames here for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames, making the above if condition redundant
+- add some frames here for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames, making the above if condition redundant - inspi: https://github.com/free-creations/a2jmidi
 - If perf is bad: have a stream of events consumed in the jack process, filled by external threads for random deviation generation, based on base sequence stored as Vec<Event>. Use a dynamic stream height, flush when reseeding or so
 - LATER: have a central sequencer process that pushes out events to jack midi or osc sender
 - Clean up unwraps
