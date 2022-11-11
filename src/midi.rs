@@ -56,7 +56,7 @@ pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> 
         let note_len = rythm_atom_duration * rng.gen_range(0..nb_rythm_atoms / 2); //TODO set
         let event_midi_on = Event {
             e_type: EventType::MidiNote(MidiNote {
-                channel: 0,
+                channel: 1,
                 pitch: note_to_midi_pitch(&scale_notes[pitch]),
                 velocity,
                 on_off: true,
@@ -65,7 +65,7 @@ pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> 
         };
         let event_midi_off = Event {
             e_type: EventType::MidiNote(MidiNote {
-                channel: 0,
+                channel: 1,
                 pitch: note_to_midi_pitch(&scale_notes[pitch]),
                 velocity,
                 on_off: false,
