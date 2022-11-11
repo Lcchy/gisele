@@ -29,6 +29,13 @@ fn note_to_midi_pitch(note: &Note) -> u8 {
     12 + note.octave * 12 + note.pitch_class.into_u8()
 }
 
+pub fn midi_pitch_to_note(pitch: u8) -> Note {
+    Note {
+        pitch_class: PitchClass::from_u8(pitch),
+        octave: (pitch / 12) - 1,
+    }
+}
+
 pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> {
     let mut rng = rand::thread_rng();
     let mut events_buffer = vec![];

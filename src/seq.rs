@@ -1,6 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use num_derive::FromPrimitive;
+use rust_music_theory::note::Note;
 use strum::EnumString;
 
 use crate::midi::{gen_rand_midi_vec, MidiNote};
@@ -15,12 +16,13 @@ pub struct Sequencer {
 }
 
 impl Sequencer {
-    pub fn new(bpm: u16, loop_length: u64, nb_events: u64) -> Self {
+    pub fn new(bpm: u16, loop_length: u64, nb_events: u64, root_note: Note) -> Self {
         let seq_params = SeqParams {
             status: SeqStatus::Stop,
             bpm,
             loop_length,
             nb_events,
+            root_note,
         };
         let event_buffer =
             gen_rand_midi_vec(seq_params.bpm, seq_params.loop_length, seq_params.nb_events);
@@ -70,6 +72,7 @@ pub struct SeqParams {
     /// In usecs,//TODO to be quantized to whole note on bpm, with option to deviate
     pub loop_length: u64,
     pub nb_events: u64,
+    pub root_note: Note,
     // density
 }
 

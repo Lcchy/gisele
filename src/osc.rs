@@ -4,7 +4,10 @@ use anyhow::bail;
 use num_traits::FromPrimitive;
 use rosc::OscMessage;
 
-use crate::Sequencer;
+use crate::{
+    midi::{self, midi_pitch_to_note},
+    Sequencer,
+};
 
 /// Should be enough,See https://osc-dev.create.ucsb.narkive.com/TyotlluU/osc-udp-packet-sizes-for-interoperability
 /// and https://www.music.mcgill.ca/~gary/306/week9/osc.html
@@ -56,6 +59,16 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 .int()
                 .ok_or_else(|| anyhow::format_err!("OSC nb_events arg was not recognized."))?
                 as u64;
+            seq.reseed()
+        }
+        "/gisele/set_root" => {
+            let mut params_mut = seq.params.write().unwrap();
+            params_mut.root_note =
+                midi_pitch_to_note(
+                    osc_msg.args[0].to_owned().int().ok_or_else(|| {
+                        anyhow::format_err!("OSC root_note arg was not recognized.")
+                    })? as u8,
+                );
             seq.reseed()
         }
         "/gisele/reseed" => {
