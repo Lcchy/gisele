@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use num_derive::FromPrimitive;
-use rust_music_theory::note::Note;
+use rust_music_theory::note::{Note, PitchClass};
 use strum::EnumString;
 
 use crate::midi::{gen_rand_midi_vec, MidiNote};
@@ -16,16 +16,19 @@ pub struct Sequencer {
 }
 
 impl Sequencer {
-    pub fn new(bpm: u16, loop_length: u64, nb_events: u64, root_note: Note) -> Self {
+    pub fn new(bpm: u16, loop_length: u64, nb_events: u64) -> Self {
         let seq_params = SeqParams {
             status: SeqStatus::Stop,
             bpm,
             loop_length,
             nb_events,
-            root_note,
+            root_note: Note {
+                pitch_class: PitchClass::C,
+                octave: 4,
+            },
+            note_length: 5,
         };
-        let event_buffer =
-            gen_rand_midi_vec(seq_params.bpm, seq_params.loop_length, seq_params.nb_events);
+        let event_buffer = gen_rand_midi_vec(&seq_params);
         Sequencer {
             event_buffer: Arc::new(RwLock::new(event_buffer)),
             params: Arc::new(RwLock::new(seq_params)),
@@ -35,8 +38,7 @@ impl Sequencer {
     pub fn reseed(&self) {
         let seq_params = self.params.read().unwrap();
         let mut event_buffer_mut = self.event_buffer.write().unwrap();
-        *event_buffer_mut =
-            gen_rand_midi_vec(seq_params.bpm, seq_params.loop_length, seq_params.nb_events);
+        *event_buffer_mut = gen_rand_midi_vec(&seq_params);
     }
 }
 
@@ -50,7 +52,7 @@ pub enum EventType {
     MidiNote(MidiNote),
 }
 
-#[derive(Clone, PartialEq, EnumString, Debug, FromPrimitive)]
+#[derive(Clone, PartialEq, Eq, EnumString, Debug, FromPrimitive)]
 pub enum SeqStatus {
     Stop,
     Start,
@@ -71,6 +73,8 @@ pub struct SeqParams {
     pub bpm: u16,
     /// In usecs,//TODO to be quantized to whole note on bpm, with option to deviate
     pub loop_length: u64,
+    /// In percent, 100 is loop_length / 2
+    pub note_length: u8,
     pub nb_events: u64,
     pub root_note: Note,
     // density
@@ -92,7 +96,7 @@ pub struct SeqInternal {
     pub j_window_time_end: u64,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum SeqInternalStatus {
     Silence,
     Playing,

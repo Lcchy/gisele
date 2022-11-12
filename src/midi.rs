@@ -4,7 +4,10 @@ use rust_music_theory::{
     scale::{Direction, Mode, Scale, ScaleType},
 };
 
-use crate::{seq::Event, EventType};
+use crate::{
+    seq::{Event, SeqParams},
+    EventType,
+};
 
 #[derive(Debug, Copy, Clone)]
 pub struct MidiNote {
@@ -36,7 +39,7 @@ pub fn midi_pitch_to_note(pitch: u8) -> Note {
     }
 }
 
-pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> {
+pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
     let mut rng = rand::thread_rng();
     let mut events_buffer = vec![];
 
@@ -53,14 +56,15 @@ pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> 
 
     // Rythmic quantization
     let rythm_precision = 16; // =16 -> 16th note, 1 note = 4bpm taps
-    let rythm_atom_duration = 4 * 60_000_000 / (rythm_precision * bpm) as u64; // In usecs
-    let nb_rythm_atoms = loop_len / rythm_atom_duration;
+    let rythm_atom_duration = 4 * 60_000_000 / (rythm_precision * seq_params.bpm) as u64; // In usecs
+    let nb_rythm_atoms = seq_params.loop_length / rythm_atom_duration;
 
-    for _ in 0..nb_events {
+    for _ in 0..seq_params.nb_events {
         let velocity = rng.gen_range(0..127);
         let pitch = rng.gen_range(0..scale_notes.len());
         let rythm_offset = rythm_atom_duration * rng.gen_range(0..nb_rythm_atoms);
-        let note_len = rythm_atom_duration * rng.gen_range(0..nb_rythm_atoms / 2); //TODO set
+        let note_len = rythm_atom_duration
+            * rng.gen_range(0..nb_rythm_atoms * seq_params.note_length as u64 / 2 * 100);
         let event_midi_on = Event {
             e_type: EventType::MidiNote(MidiNote {
                 channel: 1,
@@ -78,7 +82,7 @@ pub fn gen_rand_midi_vec(bpm: u16, loop_len: u64, nb_events: u64) -> Vec<Event> 
                 on_off: false,
             }),
             // % could be a problem, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
-            time: (rythm_offset + note_len) % loop_len,
+            time: (rythm_offset + note_len) % seq_params.loop_length,
         };
         events_buffer.push(event_midi_on);
         events_buffer.push(event_midi_off);

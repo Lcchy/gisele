@@ -1,7 +1,6 @@
 use anyhow::Result;
 use jack::{Client, ClientOptions, RawMidi};
 use osc::{osc_process_closure, OSC_PORT};
-use rust_music_theory::note::{Note, PitchClass};
 use seq::{EventType, SeqInternal, SeqInternalStatus, SeqStatus};
 use std::{io, net::UdpSocket, sync::Arc, thread};
 
@@ -22,15 +21,7 @@ fn main() -> Result<()> {
         .unwrap();
 
     // Init values
-    let seq_arc = Arc::new(Sequencer::new(
-        INIT_BPM,
-        200_000_000,
-        100,
-        Note {
-            pitch_class: PitchClass::C,
-            octave: 4,
-        },
-    ));
+    let seq_arc = Arc::new(Sequencer::new(INIT_BPM, 200_000_000, 20));
     let seq_ref = seq_arc.clone();
     let mut seq_int = SeqInternal::new();
 
