@@ -47,7 +47,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
     let scale = Scale::new(
         ScaleType::Diatonic,
         PitchClass::G,
-        1,
+        2,
         Some(Mode::Ionian),
         Direction::Ascending,
     )
