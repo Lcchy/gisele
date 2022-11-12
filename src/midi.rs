@@ -46,8 +46,8 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
     // Harmonic quantization
     let scale = Scale::new(
         ScaleType::Diatonic,
-        PitchClass::C,
-        2,
+        PitchClass::G,
+        1,
         Some(Mode::Ionian),
         Direction::Ascending,
     )
