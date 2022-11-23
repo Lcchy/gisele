@@ -37,12 +37,12 @@ fn main() -> Result<()> {
             return jack::Control::Continue;
         }
 
-        let event_buffer = &*seq_ref.event_buffer.read().unwrap();
+        let event_buffer = &*seq_ref.event_base_buffer.read().unwrap();
         let mut out_buff = out_port.writer(ps);
         let loop_len = seq_params.loop_length;
         let cy_times = ps.cycle_times().unwrap();
 
-        // we increment the current jack process cycle time window dynamically to allow speed playback variations
+        // We increment the current jack process cycle time window dynamically to allow speed playback variations
         seq_int.j_window_time_end = (seq_int.j_window_time_end
             + (((cy_times.next_usecs - cy_times.current_usecs) as f64)
                 * (seq_params.bpm as f64 / INIT_BPM as f64)) as u64)

@@ -1,7 +1,4 @@
-use std::{
-    ops::Deref,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use num_derive::FromPrimitive;
 use rust_music_theory::note::{Note, PitchClass};
@@ -9,20 +6,23 @@ use strum::EnumString;
 
 use crate::midi::{gen_rand_midi_vec, MidiNote};
 
-pub struct Sequencer<'a> {
+pub struct Sequencer {
     /// Write: osc process, Read: Jack process
     pub params: Arc<RwLock<SeqParams>>,
-    /// Event Bufffer
+    //TODO move into /// Additionnal SeqParams, jack-only
+    // /// Write: Jack, Read: Jack
+    // pub seq_internal: SeqInternal,
+    // /// Event Bufffer
+    // /// Events should be ordered by their times
+    // /// Write: TBD, Read: Jack process
+    // pub event_buffer: Arc<RwLock<Vec<Event>>>,
+    /// Events base buffer
     /// Events should be ordered by their times
     /// Write: TBD, Read: Jack process
-    pub event_buffer: Arc<RwLock<Vec<Event>>>,
-    /// Event Bufffer
-    /// Events should be ordered by their times
-    /// Write: TBD, Read: Jack process
-    pub event_refs_buffer: Arc<RwLock<Vec<&'a Event>>>,
+    pub event_base_buffer: Arc<RwLock<Vec<Event>>>,
 }
 
-impl Sequencer<'_> {
+impl Sequencer {
     pub fn new(bpm: u16, loop_length: u64, nb_events: u64) -> Self {
         let seq_params = SeqParams {
             status: SeqStatus::Stop,
@@ -35,27 +35,20 @@ impl Sequencer<'_> {
             },
             note_length: 5,
         };
-        let event_buffer = gen_rand_midi_vec(&seq_params);
+        let event_base_buffer = gen_rand_midi_vec(&seq_params);
 
-        let event_refs_buffer = gen_events_refs_buffer(event_buffer);
         Sequencer {
-            event_buffer: Arc::new(RwLock::new(event_buffer)),
             params: Arc::new(RwLock::new(seq_params)),
-            event_refs_buffer: Arc::new(RwLock::new(event_refs_buffer)),
+            // seq_internal: SeqInternal::new(),
+            event_base_buffer: Arc::new(RwLock::new(event_base_buffer)),
         }
     }
 
     pub fn reseed(&self) {
         let seq_params = self.params.read().unwrap();
-        let mut event_buffer_mut = self.event_buffer.write().unwrap();
+        let mut event_buffer_mut = self.event_base_buffer.write().unwrap();
         *event_buffer_mut = gen_rand_midi_vec(&seq_params);
     }
-}
-
-pub fn gen_events_refs_buffer<'a>(event_buffer: Vec<Event>) -> Vec<impl Deref<Target = Event>> {
-    let mut events_ref_buffer = vec![];
-    events_ref_buffer.push(&event_buffer[0]);
-    events_ref_buffer
 }
 
 pub struct Event {
