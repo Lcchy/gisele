@@ -91,6 +91,7 @@ fn main() -> Result<()> {
                             note.channel, note.pitch, note.velocity, note.on_off, next_event.time
                         );
                     }
+                    EventType::_Fill => todo!(),
                 }
                 seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();
             } else {

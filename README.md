@@ -14,16 +14,26 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
 ### Steps:
 
-- Big refactor: Add a note_ref_buffer, that is the one being actually played. Instead of of a thousand conditions SEE (refactor_event_buffer). TODO do not use refs, just duplicate the notes
+(- Big refactor: Add a note_ref_buffer, that is the one being actually played. Instead of of a thousand conditions SEE (refactor_event_buffer). TODO do not use refs, just duplicate the notes)
+
+- Test transpose
+- Test out Gisele with Blackbox for slicer rythm
+- Add velocity param
 - Add random deviations from Vec<Event> base: add gen_rand_note() in jack_process
-- Give random params like note_len etc a non uniform probability
+- Non uniform probs for seq gen params
 - Introduce cells/flows: randomness functions that can be used for deviation or base, harm or rythm:
+
+  - Overlapping/non-overlapping events (on same channel or not)
+  - Chords
   - euclidean
   - arpeggio
   - polyrythms (is a relationship of rythms?)
   - Retrigs
   - minimalism
   - lfo for osc param control
+
+- Make params sequencable
+- Add harmonic coherent transpose + iversions
 - Add midi in for randomization seeding
 - Add osc output
 
@@ -36,7 +46,7 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
 ### Links:
 
-- Inspirations: 
+- Inspirations:
   - Polyend Play https://www.youtube.com/watch?v=JAQXqoKRfzs
   - Torso T1
   - https://llllllll.co/t/generative-sequencers/19155

@@ -28,7 +28,7 @@ impl MidiNote {
     }
 }
 
-fn note_to_midi_pitch(note: &Note) -> u8 {
+pub fn note_to_midi_pitch(note: &Note) -> u8 {
     12 + note.octave * 12 + note.pitch_class.into_u8()
 }
 
@@ -60,7 +60,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
     let nb_rythm_atoms = seq_params.loop_length / rythm_atom_duration;
 
     for _ in 0..seq_params.nb_events {
-        let velocity = rng.gen_range(95..127);
+        let velocity = rng.gen_range(0..127);
         let pitch = rng.gen_range(0..scale_notes.len());
         let rythm_offset = rythm_atom_duration * rng.gen_range(0..nb_rythm_atoms);
         let note_len = rythm_atom_duration

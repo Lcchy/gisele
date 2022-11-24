@@ -4,7 +4,7 @@ use num_derive::FromPrimitive;
 use rust_music_theory::note::{Note, PitchClass};
 use strum::EnumString;
 
-use crate::midi::{gen_rand_midi_vec, MidiNote};
+use crate::midi::{gen_rand_midi_vec, note_to_midi_pitch, MidiNote};
 
 pub struct Sequencer {
     /// Write: osc process, Read: Jack process
@@ -40,6 +40,20 @@ impl Sequencer {
         let mut event_buffer_mut = self.event_buffer.write().unwrap();
         *event_buffer_mut = gen_rand_midi_vec(&seq_params);
     }
+
+    pub fn transpose(&self, target_root_note: Note) {
+        let mut seq_params = self.params.write().unwrap();
+        let root_note_midi = note_to_midi_pitch(&seq_params.root_note);
+        let target_root_note_midi = note_to_midi_pitch(&target_root_note);
+        let pitch_diff = target_root_note_midi - root_note_midi;
+        let mut event_buffer_mut = self.event_buffer.write().unwrap();
+        for event in event_buffer_mut.iter_mut() {
+            if let EventType::MidiNote(MidiNote { ref mut pitch, .. }) = event.e_type {
+                *pitch += pitch_diff;
+            }
+        }
+        seq_params.root_note = target_root_note;
+    }
 }
 
 pub struct Event {
@@ -50,6 +64,7 @@ pub struct Event {
 
 pub enum EventType {
     MidiNote(MidiNote),
+    _Fill,
 }
 
 #[derive(Clone, PartialEq, Eq, EnumString, Debug, FromPrimitive)]

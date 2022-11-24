@@ -59,14 +59,13 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             seq.reseed()
         }
         "/gisele/set_root" => {
-            let mut params_mut = seq.params.write().unwrap();
-            params_mut.root_note =
+            let target_note =
                 midi_pitch_to_note(
                     osc_msg.args[0].to_owned().int().ok_or_else(|| {
                         anyhow::format_err!("OSC root_note arg was not recognized.")
                     })? as u8,
                 );
-            seq.reseed()
+            seq.transpose(target_note);
         }
         "/gisele/set_note_len" => {
             let mut params_mut = seq.params.write().unwrap();
