@@ -4,7 +4,7 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
 - Install `pipewire-jack-audio-connection-kit-devel` as a dep for building
 - Use `helvum` flatpak to route midi in pipewire
-- Use `VCV rack` for testing (TODO: switch to pd one day, pipewire shenanigans)
+- Use `Qsynth` for sound testing (pd midi not working with pw)
 
 ### Goals:
 
@@ -16,7 +16,8 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
 (- Big refactor: Add a note_ref_buffer, that is the one being actually played. Instead of of a thousand conditions SEE (refactor_event_buffer). TODO do not use refs, just duplicate the notes)
 
-- Test transpose
+- Fix Set nb events freezes loop until stop start --> Fix reseed in fact
+- Fix/test set loop length bars
 - Test out Gisele with Blackbox for slicer rythm
 - Add velocity param
 - Add random deviations from Vec<Event> base: add gen_rand_note() in jack_process

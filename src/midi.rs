@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use rand::Rng;
 use rust_music_theory::{
     note::{Note, Notes, PitchClass},
@@ -62,9 +64,14 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
     for _ in 0..seq_params.nb_events {
         let velocity = rng.gen_range(0..127);
         let pitch = rng.gen_range(0..scale_notes.len());
-        let rythm_offset = rythm_atom_duration * rng.gen_range(0..nb_rythm_atoms);
+        let rythm_offset = rythm_atom_duration * rng.gen_range(0..max(nb_rythm_atoms, 1));
         let note_len = rythm_atom_duration
-            * rng.gen_range(0..nb_rythm_atoms * seq_params.note_length as u64 / (2 * 100));
+            * rng.gen_range(
+                0..max(
+                    1,
+                    nb_rythm_atoms * seq_params.note_length as u64 / (2 * 100),
+                ),
+            );
         let event_midi_on = Event {
             e_type: EventType::MidiNote(MidiNote {
                 channel: 1,

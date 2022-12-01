@@ -56,7 +56,10 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 .int()
                 .ok_or_else(|| anyhow::format_err!("OSC nb_events arg was not recognized."))?
                 as u64;
-            seq.reseed()
+            drop(params_mut);
+            println!("Reseeding..");
+            seq.reseed();
+            println!("Finished reseeding");
         }
         "/gisele/set_root" => {
             let target_note =
@@ -74,7 +77,10 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 .int()
                 .ok_or_else(|| anyhow::format_err!("OSC root_note arg was not recognized."))?
                 as u8;
-            seq.reseed()
+            drop(params_mut);
+            println!("Reseeding..");
+            seq.reseed();
+            println!("Finished reseeding");
         }
         "/gisele/reseed" => {
             println!("Reseeding..");

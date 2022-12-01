@@ -45,11 +45,11 @@ impl Sequencer {
         let mut seq_params = self.params.write().unwrap();
         let root_note_midi = note_to_midi_pitch(&seq_params.root_note);
         let target_root_note_midi = note_to_midi_pitch(&target_root_note);
-        let pitch_diff = target_root_note_midi - root_note_midi;
+        let pitch_diff = target_root_note_midi as i32 - root_note_midi as i32;
         let mut event_buffer_mut = self.event_buffer.write().unwrap();
         for event in event_buffer_mut.iter_mut() {
             if let EventType::MidiNote(MidiNote { ref mut pitch, .. }) = event.e_type {
-                *pitch += pitch_diff;
+                *pitch = (*pitch as i32 + pitch_diff).clamp(0, 127) as u8;
             }
         }
         seq_params.root_note = target_root_note;
