@@ -1,4 +1,4 @@
-#N canvas -10 21 960 1017 12;
+#N canvas -10 21 960 980 12;
 #X msg 69 66 0;
 #X obj 712 428 netsend -u -b;
 #X obj 69 108 oscformat -f i /gisele/set_status;
@@ -54,6 +54,7 @@
 #X msg 428 258 2e+07;
 #X msg 68 257 500000;
 #X obj 68 703 oscformat -f i /gisele/set_note_len;
+#X msg 697 92 connect 10.244.1.228 34254;
 #X connect 0 0 2 0;
 #X connect 2 0 1 0;
 #X connect 3 0 2 0;
@@ -101,3 +102,4 @@
 #X connect 50 0 13 0;
 #X connect 51 0 13 0;
 #X connect 52 0 1 0;
+#X connect 53 0 1 0;

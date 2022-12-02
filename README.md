@@ -26,11 +26,10 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
   - Overlapping/non-overlapping events (on same channel or not)
   - Chords
-  - euclidean
   - arpeggio
   - polyrythms (is a relationship of rythms?)
   - Retrigs
-  - minimalism
+  - grooves: euclidian, minimalism, amapiano, contre-temps, kontrapunkt, dnb, acid techno, dub
   - lfo for osc param control
 
 - Make params sequencable
