@@ -16,6 +16,7 @@ A generative midi sequencer running on Jack, controlled via OSC.
 
 (- Big refactor: Add a note_ref_buffer, that is the one being actually played. Instead of of a thousand conditions SEE (refactor_event_buffer). TODO do not use refs, just duplicate the notes)
 
+- Look into RT priority
 - Fix Set nb events freezes loop until stop start --> Fix reseed in fact
 - Fix/test set loop length bars
 - Test out Gisele with Blackbox for slicer rythm
