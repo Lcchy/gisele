@@ -6,7 +6,36 @@ A generative midi sequencer running on Jack, controlled via OSC.
 - Use `helvum` flatpak to route midi in pipewire
 - Use `Qsynth` for sound testing (pd midi not working with pw)
 
-### Goals:
+### General Structure:
+
+A Sequencer Line:
+
+```
+Fixed base seqs (euclidian, minimalism, dub, random, counterpoint, etc..)
+
+-(into)-> Seq Fx (harmonic inversion, pitschift, retrigs, etc...)
+
+-(into)-> Randomization cells (gauss, poison.., genetic mutation, L systems, game of life, ...)
+
+--> output
+```
+
+These sequencer lines work in parallell.
+
+2 Models:
+
+1. Dominated:
+   One sequencer line (which could be silent in sound) influences parameters of other lines. Composition.
+2. Federated:
+   The sequencer lines influence each others parameters creating feedback loops, maintaining the balance. Generative.
+
+(Model 1 could control groups of model 2 structures.)
+
+Additionally: choose the correct parameters for live user input.
+
+---
+
+### Intermediate Goals:
 
 - Percussion slicer:
   - rand note_len is uniform({1/4,1})
