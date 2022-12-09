@@ -1,4 +1,4 @@
-A generative midi sequencer running on Jack, controlled via OSC.
+WIP A generative midi sequencer running on Jack, controlled via OSC.
 
 ### Run on Fedora36
 
