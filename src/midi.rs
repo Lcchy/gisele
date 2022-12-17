@@ -98,8 +98,47 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
     events_buffer
 }
 
+fn gen_euclid(pulses: u8, steps: u8) -> Vec<u8> {
+    let head = vec![vec![1u8]; pulses as usize];
+    let tail = vec![vec![0u8]; (steps - pulses) as usize];
+
+    fn gen_euclid_rec(mut head: Vec<Vec<u8>>, mut tail: Vec<Vec<u8>>) -> Vec<u8> {
+        let mut new_head = vec![];
+        while let Some(t) = tail.pop() {
+            if let Some(h) = head.pop() {
+                new_head.push([h, t].concat());
+            } else {
+                tail.push(t);
+                break;
+            }
+        }
+        if tail.is_empty() && !head.is_empty() {
+            tail = head;
+        }
+        if tail.len() < 2 {
+            return [new_head.concat(), tail.concat()].concat();
+        }
+        gen_euclid_rec(new_head, tail)
+    }
+
+    gen_euclid_rec(head, tail)
+}
+
+pub fn gen_euclid_midi_vec(seq_params: &SeqParams, pulses: u8, steps: u8) -> Vec<Event> {}
+
 #[test]
-fn test() {
+fn test_euclid() {
+    assert_eq!(gen_euclid(1, 2), vec![1, 0]);
+    assert_eq!(gen_euclid(1, 3), vec![1, 0, 0]);
+    assert_eq!(gen_euclid(1, 4), vec![1, 0, 0, 0,]);
+    assert_eq!(gen_euclid(4, 12), vec![1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,]);
+    assert_eq!(gen_euclid(2, 3), vec![1, 0, 1]);
+    assert_eq!(gen_euclid(2, 5), vec![1, 0, 1, 0, 0]);
+    assert_eq!(gen_euclid(3, 4), vec![1, 0, 1, 1]);
+}
+
+#[test]
+fn test_midi_pitch() {
     assert_eq!(
         note_to_midi_pitch(&Note {
             pitch_class: PitchClass::A,

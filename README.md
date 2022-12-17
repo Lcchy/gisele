@@ -46,11 +46,12 @@ Additionally: choose the correct parameters for live user input.
 (- Big refactor: Add a note_ref_buffer, that is the one being actually played. Instead of of a thousand conditions SEE (refactor_event_buffer). TODO do not use refs, just duplicate the notes)
 
 - Look into RT priority
+- Test out Gisele with Blackbox for slicer rythm:
+  - Add euclid gen midi with constant note
+  - Add random deviations from Vec<Event> base: add gen_rand_note() in jack_process, add LFOS for modulation of note center
 - Fix Set nb events freezes loop until stop start --> Fix reseed in fact
 - Fix/test set loop length bars
-- Test out Gisele with Blackbox for slicer rythm
 - Add velocity param
-- Add random deviations from Vec<Event> base: add gen_rand_note() in jack_process
 - Non uniform probs for seq gen params
 - Introduce cells/flows: randomness functions that can be used for deviation or base, harm or rythm:
 
@@ -76,6 +77,7 @@ Additionally: choose the correct parameters for live user input.
 
 ### Links:
 
+- Euclid implem: http://cgm.cs.mcgill.ca/~godfried/publications/banff.pdf
 - Inspirations:
   - Polyend Play https://www.youtube.com/watch?v=JAQXqoKRfzs
   - Torso T1
