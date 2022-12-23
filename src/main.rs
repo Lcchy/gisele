@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .unwrap();
 
     // Init values
-    let seq_arc = Arc::new(Sequencer::new(INIT_BPM, 200_000_000, 20));
+    let seq_arc = Arc::new(Sequencer::new(INIT_BPM, 16, 10));
     let seq_ref = seq_arc.clone();
     let mut seq_int = SeqInternal::new();
 
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 
         let event_buffer = &*seq_ref.event_buffer.read().unwrap();
         let mut out_buff = out_port.writer(ps);
-        let loop_len = seq_params.loop_length;
+        let loop_len = seq_params.get_loop_len_in_us();
         let cy_times = ps.cycle_times().unwrap();
 
         // we increment the current jack process cycle time window dynamically to allow speed playback variations
@@ -73,7 +73,7 @@ fn main() -> Result<()> {
                     }
                 }
             };
-            jump_event = jump_event || seq_params.loop_length < next_event.time;
+            jump_event = jump_event || loop_len < next_event.time;
 
             if jump_event {
                 seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();

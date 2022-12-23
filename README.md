@@ -45,7 +45,6 @@ Additionally: choose the correct parameters for live user input.
 
 (- Big refactor: Add a note_ref_buffer, that is the one being actually played. Instead of of a thousand conditions SEE (refactor_event_buffer). TODO do not use refs, just duplicate the notes)
 
-- Look into RT priority
 - Test out Gisele with Blackbox for slicer rythm:
   - Add euclid gen midi with constant note
   - Add random deviations from Vec<Event> base: add gen_rand_note() in jack_process, add LFOS for modulation of note center
@@ -66,7 +65,9 @@ Additionally: choose the correct parameters for live user input.
 - Make params sequencable
 - Add harmonic coherent transpose + iversions
 - Add midi in for randomization seeding
+- Add manual loop shortening
 - Add osc output
+- Look into RT priority
 
 ### TODO:
 

@@ -86,13 +86,23 @@ pub enum SeqStatus {
 pub struct SeqParams {
     pub status: SeqStatus,
     pub bpm: u16,
-    /// In usecs,//TODO to be quantized to whole note on bpm, with option to deviate
+    /// In bars, 16 is 4 measures
     pub loop_length: u64,
     /// In percent, 100 is loop_length / 2
     pub note_length: u8,
     pub nb_events: u64,
     pub root_note: Note,
     // density
+}
+
+impl SeqParams {
+    pub fn get_loop_len_in_us(&self) -> u64 {
+        ((self.loop_length as f64) * 60_000_000. / self.bpm as f64) as u64
+    }
+
+    pub fn get_step_len_in_us(&self) -> u64 {
+        (60_000_000. / self.bpm as f64) as u64
+    }
 }
 
 /// Additionnal SeqParams, only to be set and read by the jack Cycle

@@ -57,21 +57,15 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
     let scale_notes = scale.notes();
 
     // Rythmic quantization
-    let rythm_precision = 16; // =16 -> 16th note, 1 note = 4bpm taps
-    let rythm_atom_duration = 4 * 60_000_000 / (rythm_precision * seq_params.bpm) as u64; // In usecs
-    let nb_rythm_atoms = seq_params.loop_length / rythm_atom_duration;
+    let step_len_us = seq_params.get_step_len_in_us();
+    let loop_len_us = seq_params.get_loop_len_in_us();
 
+    let mut step_offset = 0;
     for _ in 0..seq_params.nb_events {
         let velocity = rng.gen_range(0..127);
         let pitch = rng.gen_range(0..scale_notes.len());
-        let rythm_offset = rythm_atom_duration * rng.gen_range(0..max(nb_rythm_atoms, 1));
-        let note_len = rythm_atom_duration
-            * rng.gen_range(
-                0..max(
-                    1,
-                    nb_rythm_atoms * seq_params.note_length as u64 / (2 * 100),
-                ),
-            );
+        let note_len = max(1, rng.gen_range(0..3));
+
         let event_midi_on = Event {
             e_type: EventType::MidiNote(MidiNote {
                 channel: 1,
@@ -79,7 +73,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
                 velocity,
                 on_off: true,
             }),
-            time: rythm_offset,
+            time: step_offset * step_len_us,
         };
         let event_midi_off = Event {
             e_type: EventType::MidiNote(MidiNote {
@@ -89,10 +83,13 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams) -> Vec<Event> {
                 on_off: false,
             }),
             // % could be a problem, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
-            time: (rythm_offset + note_len) % seq_params.loop_length,
+            time: (step_offset + note_len) % loop_len_us,
         };
+
         events_buffer.push(event_midi_on);
         events_buffer.push(event_midi_off);
+        let time_incr = rng.gen_range(0..seq_params.loop_length);
+        step_offset = (step_offset + time_incr) % seq_params.loop_length;
     }
     events_buffer.sort_by_key(|e| e.time);
     events_buffer
@@ -124,7 +121,47 @@ fn gen_euclid(pulses: u8, steps: u8) -> Vec<u8> {
     gen_euclid_rec(head, tail)
 }
 
-pub fn gen_euclid_midi_vec(seq_params: &SeqParams, pulses: u8, steps: u8) -> Vec<Event> {}
+pub fn gen_euclid_midi_vec(seq_params: &SeqParams, pulses: u8, steps: u8) -> Vec<Event> {
+    let mut events_buffer = vec![];
+
+    let step_len_us = seq_params.get_step_len_in_us();
+    let euclid_rythm = gen_euclid(pulses, steps);
+
+    let velocity = 127;
+    let pitch = 69;
+    let note_len = 250_000;
+
+    let mut time_offset = 0;
+    for i in euclid_rythm {
+        if i == 0 {
+            continue;
+        }
+
+        let event_midi_on = Event {
+            e_type: EventType::MidiNote(MidiNote {
+                channel: 1,
+                pitch,
+                velocity,
+                on_off: true,
+            }),
+            time: time_offset,
+        };
+        let event_midi_off = Event {
+            e_type: EventType::MidiNote(MidiNote {
+                channel: 1,
+                pitch,
+                velocity,
+                on_off: false,
+            }),
+            // % could be a problem, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
+            time: (time_offset + note_len) % seq_params.loop_length,
+        };
+        events_buffer.push(event_midi_on);
+        events_buffer.push(event_midi_off);
+        time_offset += step_len_us;
+    }
+    events_buffer
+}
 
 #[test]
 fn test_euclid() {
