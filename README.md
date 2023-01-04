@@ -87,3 +87,6 @@ Additionally: choose the correct parameters for live user input.
   - https://www.youtube.com/watch?v=JPFv3adyLB4
 - Midi ref: https://www.cs.cmu.edu/~music/cmsip/readings/davids-midi-spec.htm
 - Jack API: https://jackaudio.org/api/group__TimeFunctions.html
+- Refs for jack frame event sync:
+   - https://github.com/free-creations/a2jmidi
+   - https://github.com/jackaudio/tools/blob/master/connect.c
