@@ -55,6 +55,8 @@
 #X msg 68 257 500000;
 #X obj 68 703 oscformat -f i /gisele/set_note_len;
 #X msg 697 92 connect 10.244.1.228 34254;
+#X msg 23 448 10;
+#X msg 21 368 32;
 #X connect 0 0 2 0;
 #X connect 2 0 1 0;
 #X connect 3 0 2 0;
@@ -103,3 +105,4 @@
 #X connect 51 0 13 0;
 #X connect 52 0 1 0;
 #X connect 53 0 1 0;
+#X connect 55 0 13 0;

@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .unwrap();
 
     // Init values
-    let seq_arc = Arc::new(Sequencer::new(INIT_BPM, 16, 10));
+    let seq_arc = Arc::new(Sequencer::new(INIT_BPM, 16));
     let seq_ref = seq_arc.clone();
     let mut seq_int = SeqInternal::new();
 
