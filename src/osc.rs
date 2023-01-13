@@ -1,7 +1,7 @@
 use std::{net::UdpSocket, sync::Arc};
 
 use crate::seq::BaseSeqParams::{self, Random};
-use crate::seq::{EuclidBase, RandomBase};
+use crate::seq::{EuclidBase, RandomBase, SeqStatus};
 use crate::{midi::midi_pitch_to_note, seq::BaseSeq, Sequencer};
 use anyhow::bail;
 use num_traits::FromPrimitive;
@@ -100,6 +100,8 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/empty" => {
             seq.empty();
+            let mut seq_params_mut = seq.params.write().unwrap();
+            seq_params_mut.status = SeqStatus::Stop;
             println!("Finished emptying");
         }
         "/gisele/add_random_base" => {

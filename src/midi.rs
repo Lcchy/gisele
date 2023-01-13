@@ -7,6 +7,7 @@ use rust_music_theory::{
 };
 
 use crate::seq::{
+    self,
     BaseSeqParams::{Euclid, Random},
     EuclidBase,
 };
@@ -149,7 +150,13 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
         note_len, //TODO clarify its type
     } = euclid_seq
     {
+        if seq_params.loop_length % *steps as u64 != 0 {
+            eprintln!("Could not generate euclidean rythm for indivisible loop-length.");
+            return events_buffer;
+        }
+
         let step_len_us = seq_params.get_step_len_in_us();
+        let euclid_step_len = step_len_us * seq_params.loop_length / *steps as u64;
         let euclid_rythm = gen_euclid(*pulses, *steps);
 
         let velocity = 127;
@@ -178,13 +185,12 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
                     velocity,
                     on_off: false,
                 }),
-                // % could be a problem, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
                 time: (time_offset + *note_len as u64) % seq_params.loop_length,
                 id: *id,
             };
             events_buffer.push(event_midi_on);
             events_buffer.push(event_midi_off);
-            time_offset += step_len_us;
+            time_offset += euclid_step_len;
         }
     } else {
         eprintln!("Could not insert BaseSeq as its not Euclidean.")

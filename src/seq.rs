@@ -52,6 +52,10 @@ impl Sequencer {
     pub fn insert_events(&self, events: Vec<Event>) {
         let mut buff_idx = 0;
         let mut event_buffer_mut = self.event_buffer.write().unwrap();
+        if event_buffer_mut.len() == 0 {
+            *event_buffer_mut = events;
+            return;
+        }
         for event in events {
             if event.time < event_buffer_mut[buff_idx].time {
                 event_buffer_mut.insert(buff_idx, event);

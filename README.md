@@ -42,6 +42,7 @@ Additionally: choose the correct parameters for live user input.
 
 ### TODO:
 
+- Fix add_euclid step len
 - Fix Set nb events freezes loop until stop start --> Fix reseed in fact
 - Fix/test set loop length bars
 - write macros for base_seq getters (or use https://docs.rs/parking_lot/latest/parking_lot/type.RwLock.html and map)

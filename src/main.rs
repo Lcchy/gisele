@@ -55,8 +55,7 @@ fn main() -> Result<()> {
 
         let event_head_before = seq_int.event_head;
         let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;
-        loop {
-            let next_event = &event_buffer[seq_int.event_head];
+        while let Some(next_event) = &event_buffer.get(seq_int.event_head) {
             // println!("Next note Time {}", next_event.time);
 
             let mut push_event = seq_int.event_in_cycle(next_event.time);
