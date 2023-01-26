@@ -147,19 +147,6 @@ impl Sequencer {
     }
 }
 
-//TODO if we dont use parking_lot
-// #[macro_export]
-// macro_rules! get_base_seq {
-//     (  &$seq:ident, $base_seq_id:ident ) => {{
-//         let seq_params = $seq.params.read().unwrap();
-//         seq_params
-//             .base_seqs
-//             .iter()
-//             .find(|s| s.id == $base_seq_id)
-//             .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))?
-//     }};
-// }
-
 #[derive(Clone, PartialEq, Eq, EnumString, Debug, FromPrimitive)]
 pub enum SeqStatus {
     Stop,
