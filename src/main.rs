@@ -27,7 +27,7 @@ fn main() -> Result<()> {
 
     // Define the Jack process
     let jack_process = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
-        let seq_params = seq_ref.params.read().unwrap();
+        let seq_params = seq_ref.params.read();
 
         // Handle Sequencer statuses
         if seq_params.status == SeqStatus::Start {
@@ -37,7 +37,7 @@ fn main() -> Result<()> {
             return jack::Control::Continue;
         }
 
-        let event_buffer = &*seq_ref.event_buffer.read().unwrap();
+        let event_buffer = &*seq_ref.event_buffer.read();
         let mut out_buff = out_port.writer(ps);
         let loop_len = seq_params.get_loop_len_in_us();
         let cy_times = ps.cycle_times().unwrap();

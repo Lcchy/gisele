@@ -1,10 +1,9 @@
-use std::{
-    sync::{Arc, RwLock},
-    vec,
-};
-
 use num_derive::FromPrimitive;
+use parking_lot::{
+    MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
 use rust_music_theory::note::Note;
+use std::sync::Arc;
 use strum::EnumString;
 
 use crate::midi::{gen_euclid_midi_vec, gen_rand_midi_vec, note_to_midi_pitch, MidiNote};
@@ -51,7 +50,7 @@ impl Sequencer {
     ///The events need to be sorted by their timestamp
     pub fn insert_events(&self, events: Vec<Event>) {
         let mut buff_idx = 0;
-        let mut event_buffer_mut = self.event_buffer.write().unwrap();
+        let mut event_buffer_mut = self.event_buffer.write();
         if event_buffer_mut.len() == 0 {
             *event_buffer_mut = events;
             return;
@@ -69,7 +68,7 @@ impl Sequencer {
     }
 
     pub fn add_base_seq(&self, base_seq_params: BaseSeqParams, root_note: Note, note_len: u16) {
-        let mut seq_params = self.params.write().unwrap();
+        let mut seq_params = self.params.write();
         seq_params.base_seq_incr += 1;
         let base_seq = BaseSeq {
             ty: base_seq_params,
@@ -86,27 +85,35 @@ impl Sequencer {
         seq_params.base_seqs.push(base_seq);
     }
 
+    /// BaseSeq getter, mapping the lock contents in order to preserve the lifetime
+    pub fn get_base_seq(&self, base_seq_id: u32) -> MappedRwLockReadGuard<BaseSeq> {
+        RwLockReadGuard::map(self.params.read(), |p| {
+            p.base_seqs
+                .iter()
+                .find(|s| s.id == base_seq_id)
+                .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))
+                .unwrap()
+        })
+    }
+
+    /// BaseSeq mutable getter, mapping the lock contents in order to preserve the lifetime
+    pub fn get_base_seq_mut(&self, base_seq_id: u32) -> MappedRwLockWriteGuard<BaseSeq> {
+        RwLockWriteGuard::map(self.params.write(), |p| {
+            p.base_seqs
+                .iter_mut()
+                .find(|s| s.id == base_seq_id)
+                .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))
+                .unwrap()
+        })
+    }
+
     pub fn rm_base_seq(&self, base_seq: &BaseSeq) {
-        let mut event_buffer_mut = self.event_buffer.write().unwrap();
+        let mut event_buffer_mut = self.event_buffer.write();
         event_buffer_mut.retain(|e| e.id != base_seq.id);
     }
 
-    //TODO write as macro
-    // pub fn get_base_seq(&self, base_seq_id: u32) -> Option<&BaseSeq> {
-    //     let seq_params = self.params.read().unwrap();
-    //     seq_params.base_seqs.iter().find(|s| s.id == base_seq_id)
-    // }
-
-    // pub fn get_base_seq_mut(&self, base_seq_id: u32) -> Option<&mut BaseSeq> {
-    //     let mut seq_params = self.params.write().unwrap();
-    //     seq_params
-    //         .base_seqs
-    //         .iter_mut()
-    //         .find(|s| s.id == base_seq_id)
-    // }
-
     pub fn regen_base_seq(&self, base_seq: &BaseSeq) {
-        let seq_params = self.params.read().unwrap();
+        let seq_params = self.params.read();
         self.rm_base_seq(base_seq);
         let regen = match base_seq.ty {
             BaseSeqParams::Random(_) => gen_rand_midi_vec(&seq_params, base_seq),
@@ -119,7 +126,7 @@ impl Sequencer {
         let root_note_midi = note_to_midi_pitch(&base_seq.root_note);
         let target_root_note_midi = note_to_midi_pitch(&target_root_note);
         let pitch_diff = target_root_note_midi as i32 - root_note_midi as i32;
-        let mut event_buffer_mut = self.event_buffer.write().unwrap();
+        let mut event_buffer_mut = self.event_buffer.write();
         for event in event_buffer_mut.iter_mut() {
             if event.id == base_seq.id {
                 if let EventType::MidiNote(MidiNote { ref mut pitch, .. }) = event.e_type {
@@ -132,13 +139,26 @@ impl Sequencer {
 
     /// Delete all BaseSeqs, empty the EventBuffer
     pub fn empty(&self) {
-        let mut event_buffer_mut = self.event_buffer.write().unwrap();
+        let mut event_buffer_mut = self.event_buffer.write();
         *event_buffer_mut = vec![];
-        let mut seq_params = self.params.write().unwrap();
+        let mut seq_params = self.params.write();
         seq_params.base_seqs = vec![];
         seq_params.base_seq_incr = 0;
     }
 }
+
+//TODO if we dont use parking_lot
+// #[macro_export]
+// macro_rules! get_base_seq {
+//     (  &$seq:ident, $base_seq_id:ident ) => {{
+//         let seq_params = $seq.params.read().unwrap();
+//         seq_params
+//             .base_seqs
+//             .iter()
+//             .find(|s| s.id == $base_seq_id)
+//             .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))?
+//     }};
+// }
 
 #[derive(Clone, PartialEq, Eq, EnumString, Debug, FromPrimitive)]
 pub enum SeqStatus {

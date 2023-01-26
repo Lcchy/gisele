@@ -23,58 +23,43 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
     match osc_msg.addr.as_str() {
         "/gisele/set_status" => {
             let status = parse_to_int(osc_msg, 0)?;
-            let mut seq_params_mut = seq.params.write().unwrap();
+            let mut seq_params_mut = seq.params.write();
             seq_params_mut.status = FromPrimitive::from_u32(status as u32)
                 .ok_or_else(|| anyhow::format_err!("OSC status arg was not in enum."))?;
             println!("Sequencer Status set to {:?}", seq_params_mut.status);
         }
         "/gisele/set_bpm" => {
-            let mut seq_params_mut = seq.params.write().unwrap();
+            let mut seq_params_mut = seq.params.write();
             seq_params_mut.bpm = parse_to_int(osc_msg, 0)? as u16;
         }
         "/gisele/set_loop_length" => {
-            let mut seq_params_mut = seq.params.write().unwrap();
+            let mut seq_params_mut = seq.params.write();
             seq_params_mut.loop_length = parse_to_int(osc_msg, 0)? as u64;
         }
         "/gisele/regenerate" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let seq_params = seq.params.read().unwrap();
-            let base_seq = seq_params
-                .base_seqs
-                .iter()
-                .find(|s| s.id == base_seq_id)
-                .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))?;
+            let base_seq = seq.get_base_seq(base_seq_id);
             println!("Regenerating base sequence..");
-            seq.regen_base_seq(base_seq);
+            seq.regen_base_seq(&base_seq);
             println!("Finished regenerating");
         }
         "/gisele/set_root" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut seq_params_mut = seq.params.write().unwrap();
-            let base_seq_mut = seq_params_mut
-                .base_seqs
-                .iter_mut()
-                .find(|s| s.id == base_seq_id)
-                .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))?;
+            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id);
             let target_note = midi_pitch_to_note(parse_to_int(osc_msg, 1)? as u8);
-            seq.transpose(base_seq_mut, target_note);
+            seq.transpose(&mut base_seq_mut, target_note);
         }
         "/gisele/set_note_len" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut seq_params_mut = seq.params.write().unwrap();
-            let base_seq_mut = seq_params_mut
-                .base_seqs
-                .iter_mut()
-                .find(|s| s.id == base_seq_id)
-                .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))?;
+            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id);
             base_seq_mut.note_len = parse_to_int(osc_msg, 1)? as u16;
             println!("Regenerating base sequence..");
-            seq.regen_base_seq(base_seq_mut);
+            seq.regen_base_seq(&base_seq_mut);
             println!("Finished regenerating");
         }
         "/gisele/empty" => {
             seq.empty();
-            let mut seq_params_mut = seq.params.write().unwrap();
+            let mut seq_params_mut = seq.params.write();
             seq_params_mut.status = SeqStatus::Stop;
             println!("Finished emptying");
         }
@@ -99,20 +84,15 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/random_base/set_nb_events" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut seq_params_mut = seq.params.write().unwrap();
-            let base_seq_mut = seq_params_mut
-                .base_seqs
-                .iter_mut()
-                .find(|s| s.id == base_seq_id)
-                .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))?;
+            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id);
             if let BaseSeq {
                 ty: Random(RandomBase { ref mut nb_events }),
                 ..
-            } = base_seq_mut
+            } = *base_seq_mut
             {
                 *nb_events = parse_to_int(osc_msg, 1)? as u32;
                 println!("Reseeding..");
-                seq.regen_base_seq(base_seq_mut);
+                seq.regen_base_seq(&base_seq_mut);
                 println!("Finished reseeding");
             } else {
                 eprintln!("The given base_seq_id is wrong.")
