@@ -51,7 +51,7 @@ fn main() -> Result<()> {
         // println!("next_event.time {}", next_event.time);
         // println!("Curr time {}", params_ref.curr_time_end);
         // println!("Curr frames {}", cy_times.current_frames);
-        // println!("frames sunce start {}", ps.frames_since_cycle_start());
+        // println!("frames since start {}", ps.frames_since_cycle_start());
 
         let event_head_before = seq_int.event_head;
         let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;

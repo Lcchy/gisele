@@ -1,18 +1,15 @@
-use std::cmp::max;
-
 use rand::Rng;
 use rust_music_theory::{
     note::{Note, Notes, PitchClass},
     scale::{Direction, Mode, Scale, ScaleType},
 };
 
-use crate::seq::{
-    self,
-    BaseSeqParams::{Euclid, Random},
-    EuclidBase,
-};
 use crate::{
-    seq::{BaseSeq, Event, RandomBase, SeqParams},
+    seq::{
+        BaseSeq,
+        BaseSeqParams::{Euclid, Random},
+        EuclidBase, Event, RandomBase, SeqParams,
+    },
     EventType,
 };
 
@@ -54,7 +51,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
         ty: Random(RandomBase { nb_events }),
         id,
         root_note,
-        note_len, //TODO make use of
+        note_len,
     } = rand_seq
     {
         // Harmonic quantization
@@ -76,8 +73,6 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
         for _ in 0..*nb_events {
             let velocity = rng.gen_range(0..127);
             let pitch = rng.gen_range(0..scale_notes.len());
-            //TODO shouldnt be in usecs?
-            let note_len = max(1, rng.gen_range(0..3));
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
@@ -96,14 +91,14 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
                     velocity,
                     on_off: false,
                 }),
-                // % could be a problem, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
-                time: (step_offset + note_len) % loop_len_us,
+                //TODO could be a problem, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
+                time: ((step_offset + *note_len as u64) * step_len_us) % loop_len_us,
                 id: *id,
             };
 
             events_buffer.push(event_midi_on);
             events_buffer.push(event_midi_off);
-            let time_incr = rng.gen_range(0..seq_params.loop_length); //TODO fix: should be loop_len in usec)
+            let time_incr = rng.gen_range(0..loop_len_us);
             step_offset = (step_offset + time_incr) % seq_params.loop_length;
         }
         events_buffer.sort_by_key(|e| e.time);
@@ -114,7 +109,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
     events_buffer
 }
 
-fn gen_euclid(pulses: u8, steps: u8) -> Vec<u8> {
+fn gen_euclid(pulses: u32, steps: u32) -> Vec<u8> {
     let head = vec![vec![1u8]; pulses as usize];
     let tail = vec![vec![0u8]; (steps - pulses) as usize];
 
@@ -147,7 +142,7 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
         ty: Euclid(EuclidBase { pulses, steps }),
         id,
         root_note,
-        note_len, //TODO clarify its type
+        note_len,
     } = euclid_seq
     {
         if seq_params.loop_length % *steps as u64 != 0 {
@@ -185,7 +180,7 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
                     velocity,
                     on_off: false,
                 }),
-                time: (time_offset + *note_len as u64) % seq_params.loop_length,
+                time: (time_offset + (*note_len as u64) * step_len_us) % seq_params.loop_length,
                 id: *id,
             };
             events_buffer.push(event_midi_on);

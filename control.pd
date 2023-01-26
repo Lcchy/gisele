@@ -60,10 +60,10 @@
 #X obj 70 627 oscformat -f i /gisele/empty;
 #X msg 70 457 64;
 #X msg 109 455 2;
-#X obj 74 521 oscformat -f iii /gisele/add_euclid_base;
 #X obj 73 490 pack i i i i;
 #X msg 151 458 2;
 #X msg 199 459 3;
+#X obj 74 521 oscformat -f iiii /gisele/add_euclid_base;
 #X connect 0 0 2 0;
 #X connect 2 0 1 0;
 #X connect 3 0 2 0;
@@ -115,9 +115,9 @@
 #X connect 54 0 51 2;
 #X connect 55 0 56 0;
 #X connect 56 0 1 0;
-#X connect 57 0 60 0;
-#X connect 58 0 60 1;
-#X connect 59 0 1 0;
-#X connect 60 0 59 0;
-#X connect 61 0 60 2;
-#X connect 62 0 60 3;
+#X connect 57 0 59 0;
+#X connect 58 0 59 1;
+#X connect 59 0 62 0;
+#X connect 60 0 59 2;
+#X connect 61 0 59 3;
+#X connect 62 0 1 0;

@@ -1,11 +1,17 @@
-use std::{net::UdpSocket, sync::Arc};
-
-use crate::seq::BaseSeqParams::{self, Random};
-use crate::seq::{EuclidBase, RandomBase, SeqStatus};
-use crate::{midi::midi_pitch_to_note, seq::BaseSeq, Sequencer};
 use anyhow::bail;
 use num_traits::FromPrimitive;
 use rosc::OscMessage;
+use std::{net::UdpSocket, sync::Arc};
+
+use crate::{
+    midi::midi_pitch_to_note,
+    seq::BaseSeq,
+    seq::{
+        BaseSeqParams::{self, Random},
+        EuclidBase, RandomBase, SeqStatus,
+    },
+    Sequencer,
+};
 
 /// Should be enough,See https://osc-dev.create.ucsb.narkive.com/TyotlluU/osc-udp-packet-sizes-for-interoperability
 /// and https://www.music.mcgill.ca/~gary/306/week9/osc.html
@@ -16,10 +22,7 @@ pub const OSC_PORT: &str = "34254";
 fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()> {
     match osc_msg.addr.as_str() {
         "/gisele/set_status" => {
-            let status = osc_msg.args[0]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC status arg was not recognized."))?;
+            let status = parse_to_int(osc_msg, 0)?;
             let mut seq_params_mut = seq.params.write().unwrap();
             seq_params_mut.status = FromPrimitive::from_u32(status as u32)
                 .ok_or_else(|| anyhow::format_err!("OSC status arg was not in enum."))?;
@@ -27,26 +30,14 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/set_bpm" => {
             let mut seq_params_mut = seq.params.write().unwrap();
-            seq_params_mut.bpm = osc_msg.args[0]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC bpm arg wass not recognized."))?
-                as u16;
+            seq_params_mut.bpm = parse_to_int(osc_msg, 0)? as u16;
         }
         "/gisele/set_loop_length" => {
             let mut seq_params_mut = seq.params.write().unwrap();
-            seq_params_mut.loop_length = osc_msg.args[1]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC loop_len arg was not recognized."))?
-                as u64;
+            seq_params_mut.loop_length = parse_to_int(osc_msg, 0)? as u64;
         }
         "/gisele/regenerate" => {
-            let base_seq_id = osc_msg.args[0]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC base_seq_id arg was not recognized."))?
-                as u32;
+            let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
             let seq_params = seq.params.read().unwrap();
             let base_seq = seq_params
                 .base_seqs
@@ -58,42 +49,25 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             println!("Finished regenerating");
         }
         "/gisele/set_root" => {
-            let base_seq_id = osc_msg.args[0]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC base_seq_id arg was not recognized."))?
-                as u32;
+            let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
             let mut seq_params_mut = seq.params.write().unwrap();
             let base_seq_mut = seq_params_mut
                 .base_seqs
                 .iter_mut()
                 .find(|s| s.id == base_seq_id)
                 .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))?;
-            let target_note =
-                midi_pitch_to_note(
-                    osc_msg.args[1].to_owned().int().ok_or_else(|| {
-                        anyhow::format_err!("OSC root_note arg was not recognized.")
-                    })? as u8,
-                );
+            let target_note = midi_pitch_to_note(parse_to_int(osc_msg, 1)? as u8);
             seq.transpose(base_seq_mut, target_note);
         }
         "/gisele/set_note_len" => {
-            let base_seq_id = osc_msg.args[0]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC base_seq_id arg was not recognized."))?
-                as u32;
+            let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
             let mut seq_params_mut = seq.params.write().unwrap();
             let base_seq_mut = seq_params_mut
                 .base_seqs
                 .iter_mut()
                 .find(|s| s.id == base_seq_id)
                 .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))?;
-            base_seq_mut.note_len = osc_msg.args[1]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC root_note arg was not recognized."))?
-                as u8;
+            base_seq_mut.note_len = parse_to_int(osc_msg, 1)? as u16;
             println!("Regenerating base sequence..");
             seq.regen_base_seq(base_seq_mut);
             println!("Finished regenerating");
@@ -105,58 +79,26 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             println!("Finished emptying");
         }
         "/gisele/add_random_base" => {
-            let root_note = osc_msg.args[0]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC root_note arg was not recognized."))?
-                as u8;
-            let note_len = osc_msg.args[1]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC note_len arg was not recognized."))?
-                as u8;
-            let nb_events = osc_msg.args[2]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC nb_events arg was not recognized."))?
-                as u64;
+            let root_note = parse_to_int(osc_msg, 0)? as u8;
+            let note_len = parse_to_int(osc_msg, 1)? as u16;
+            let nb_events = parse_to_int(osc_msg, 2)? as u32;
             let base_seq_params = BaseSeqParams::Random(RandomBase { nb_events });
             println!("Inserting..");
             seq.add_base_seq(base_seq_params, midi_pitch_to_note(root_note), note_len);
             println!("Finished inserting");
         }
         "/gisele/add_euclid_base" => {
-            let root_note = osc_msg.args[0]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC root_note arg was not recognized."))?
-                as u8;
-            let note_len = osc_msg.args[1]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC note_len arg was not recognized."))?
-                as u8;
-            let pulses = osc_msg.args[2]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC pulses arg was not recognized."))?
-                as u8;
-            let steps = osc_msg.args[3]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC steps arg was not recognized."))?
-                as u8;
+            let root_note = parse_to_int(osc_msg, 0)? as u8;
+            let note_len = parse_to_int(osc_msg, 1)? as u16;
+            let pulses = parse_to_int(osc_msg, 2)? as u32;
+            let steps = parse_to_int(osc_msg, 3)? as u32;
             let base_seq_params = BaseSeqParams::Euclid(EuclidBase { pulses, steps });
             println!("Inserting..");
             seq.add_base_seq(base_seq_params, midi_pitch_to_note(root_note), note_len);
             println!("Finished inserting");
         }
         "/gisele/random_base/set_nb_events" => {
-            let base_seq_id = osc_msg.args[0]
-                .to_owned()
-                .int()
-                .ok_or_else(|| anyhow::format_err!("OSC base_seq_id arg was not recognized."))?
-                as u32;
+            let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
             let mut seq_params_mut = seq.params.write().unwrap();
             let base_seq_mut = seq_params_mut
                 .base_seqs
@@ -168,10 +110,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 ..
             } = base_seq_mut
             {
-                *nb_events =
-                    osc_msg.args[1].to_owned().int().ok_or_else(|| {
-                        anyhow::format_err!("OSC nb_events arg was not recognized.")
-                    })? as u64;
+                *nb_events = parse_to_int(osc_msg, 1)? as u32;
                 println!("Reseeding..");
                 seq.regen_base_seq(base_seq_mut);
                 println!("Finished reseeding");
@@ -182,6 +121,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
 
         _ => bail!("OSC path was not recognized"),
     }
+    println!("Osc command success.");
     Ok(())
 }
 
@@ -217,4 +157,11 @@ pub fn osc_process_closure(
             }
         }
     }
+}
+
+fn parse_to_int(osc_msg: &OscMessage, arg_idx: usize) -> anyhow::Result<i32> {
+    osc_msg.args[arg_idx]
+        .to_owned()
+        .int()
+        .ok_or_else(|| anyhow::format_err!("OSC arg nb {} was not recognized.", arg_idx))
 }
