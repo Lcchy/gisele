@@ -1,4 +1,4 @@
-#N canvas -10 32 1920 2079 12;
+#N canvas -10 21 960 1017 12;
 #X msg 69 66 0;
 #X obj 712 428 netsend -u -b;
 #X obj 69 108 oscformat -f i /gisele/set_status;

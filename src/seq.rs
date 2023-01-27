@@ -11,8 +11,8 @@ use crate::seq::BaseSeqParams::{Euclid, Random};
 
 pub struct Event {
     pub e_type: EventType,
-    /// usec event position from start position
-    pub time: u64,
+    /// Nb bars from sequence start (i.e. position on bpm grid)
+    pub bar_pos: u32,
     /// Ties the event to its [BaseSeq]
     pub id: u32,
 }
@@ -32,7 +32,7 @@ pub struct Sequencer {
 }
 
 impl Sequencer {
-    pub fn new(bpm: u16, loop_length: u64) -> Self {
+    pub fn new(bpm: u16, loop_length: u32) -> Self {
         let seq_params = SeqParams {
             status: SeqStatus::Stop,
             bpm,
@@ -47,7 +47,7 @@ impl Sequencer {
         }
     }
 
-    ///The events need to be sorted by their timestamp
+    ///The events need to be sorted by their time position
     pub fn insert_events(&self, events: Vec<Event>) {
         let mut buff_idx = 0;
         let mut event_buffer_mut = self.event_buffer.write();
@@ -56,7 +56,7 @@ impl Sequencer {
             return;
         }
         for event in events {
-            if event.time < event_buffer_mut[buff_idx].time {
+            if event.bar_pos < event_buffer_mut[buff_idx].bar_pos {
                 event_buffer_mut.insert(buff_idx, event);
             } else {
                 buff_idx += 1;
@@ -67,7 +67,7 @@ impl Sequencer {
         }
     }
 
-    pub fn add_base_seq(&self, base_seq_params: BaseSeqParams, root_note: Note, note_len: u16) {
+    pub fn add_base_seq(&self, base_seq_params: BaseSeqParams, root_note: Note, note_len: u32) {
         let mut seq_params = self.params.write();
         seq_params.base_seq_incr += 1;
         let base_seq = BaseSeq {
@@ -108,8 +108,7 @@ impl Sequencer {
     }
 
     pub fn rm_base_seq(&self, base_seq: &BaseSeq) {
-        let mut event_buffer_mut = self.event_buffer.write();
-        event_buffer_mut.retain(|e| e.id != base_seq.id);
+        self.event_buffer.write().retain(|e| e.id != base_seq.id);
     }
 
     pub fn regen_base_seq(&self, base_seq: &BaseSeq) {
@@ -126,8 +125,7 @@ impl Sequencer {
         let root_note_midi = note_to_midi_pitch(&base_seq.root_note);
         let target_root_note_midi = note_to_midi_pitch(&target_root_note);
         let pitch_diff = target_root_note_midi as i32 - root_note_midi as i32;
-        let mut event_buffer_mut = self.event_buffer.write();
-        for event in event_buffer_mut.iter_mut() {
+        for event in self.event_buffer.write().iter_mut() {
             if event.id == base_seq.id {
                 if let EventType::MidiNote(MidiNote { ref mut pitch, .. }) = event.e_type {
                     *pitch = (*pitch as i32 + pitch_diff).clamp(0, 127) as u8;
@@ -139,8 +137,7 @@ impl Sequencer {
 
     /// Delete all BaseSeqs, empty the EventBuffer
     pub fn empty(&self) {
-        let mut event_buffer_mut = self.event_buffer.write();
-        *event_buffer_mut = vec![];
+        *self.event_buffer.write() = vec![];
         let mut seq_params = self.params.write();
         seq_params.base_seqs = vec![];
         seq_params.base_seq_incr = 0;
@@ -149,16 +146,19 @@ impl Sequencer {
 
 #[derive(Clone, PartialEq, Eq, EnumString, Debug, FromPrimitive)]
 pub enum SeqStatus {
+    /// Pause ans reset sequencer to start position
     Stop,
     Start,
     Pause,
+    /// Sequencer is set to shutdown gracefully
+    Shutdown,
 }
 
 pub struct SeqParams {
     pub status: SeqStatus,
     pub bpm: u16,
     /// In bars, 16 is 4 measures
-    pub loop_length: u64,
+    pub loop_length: u32,
     /// Current state of the [BaseSeq]s that constitute the EventBuffer
     pub base_seqs: Vec<BaseSeq>,
     /// Counter of total nb of BaseSeqs ever created, used for [BaseSeq] id
@@ -191,7 +191,7 @@ pub struct BaseSeq {
     pub id: u32,
     pub root_note: Note,
     /// In bars
-    pub note_len: u16,
+    pub note_len: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -208,7 +208,7 @@ pub struct EuclidBase {
 //////////////////////////////////////////////////////////////////////////
 /// Internal Sequencer state
 
-/// Additionnal SeqParams, only to be set and read by the jack Cycle
+/// Additional SeqParams, only to be set and read by the jack Cycle
 pub struct SeqInternal {
     /// Allows for cycle skipping when on pause/stop.
     /// Indicates, when stopping, if we are on the final cycle before silence.

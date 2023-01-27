@@ -1,7 +1,7 @@
 use anyhow::bail;
 use num_traits::FromPrimitive;
 use rosc::OscMessage;
-use std::{net::UdpSocket, sync::Arc};
+use std::{io::ErrorKind, net::UdpSocket, sync::Arc};
 
 use crate::{
     midi::midi_pitch_to_note,
@@ -29,12 +29,10 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             println!("Sequencer Status set to {:?}", seq_params_mut.status);
         }
         "/gisele/set_bpm" => {
-            let mut seq_params_mut = seq.params.write();
-            seq_params_mut.bpm = parse_to_int(osc_msg, 0)? as u16;
+            seq.params.write().bpm = parse_to_int(osc_msg, 0)? as u16;
         }
         "/gisele/set_loop_length" => {
-            let mut seq_params_mut = seq.params.write();
-            seq_params_mut.loop_length = parse_to_int(osc_msg, 0)? as u64;
+            seq.params.write().loop_length = parse_to_int(osc_msg, 0)? as u32;
         }
         "/gisele/regenerate" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
@@ -52,20 +50,19 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         "/gisele/set_note_len" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
             let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id);
-            base_seq_mut.note_len = parse_to_int(osc_msg, 1)? as u16;
+            base_seq_mut.note_len = parse_to_int(osc_msg, 1)? as u32;
             println!("Regenerating base sequence..");
             seq.regen_base_seq(&base_seq_mut);
             println!("Finished regenerating");
         }
         "/gisele/empty" => {
             seq.empty();
-            let mut seq_params_mut = seq.params.write();
-            seq_params_mut.status = SeqStatus::Stop;
+            seq.params.write().status = SeqStatus::Stop;
             println!("Finished emptying");
         }
         "/gisele/add_random_base" => {
             let root_note = parse_to_int(osc_msg, 0)? as u8;
-            let note_len = parse_to_int(osc_msg, 1)? as u16;
+            let note_len = parse_to_int(osc_msg, 1)? as u32;
             let nb_events = parse_to_int(osc_msg, 2)? as u32;
             let base_seq_params = BaseSeqParams::Random(RandomBase { nb_events });
             println!("Inserting..");
@@ -74,7 +71,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/add_euclid_base" => {
             let root_note = parse_to_int(osc_msg, 0)? as u8;
-            let note_len = parse_to_int(osc_msg, 1)? as u16;
+            let note_len = parse_to_int(osc_msg, 1)? as u32;
             let pulses = parse_to_int(osc_msg, 2)? as u32;
             let steps = parse_to_int(osc_msg, 3)? as u32;
             let base_seq_params = BaseSeqParams::Euclid(EuclidBase { pulses, steps });
@@ -108,11 +105,11 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
 /// Returns the main osc receiving loop
 pub fn osc_process_closure(
     udp_socket: UdpSocket,
-    params_ref: Arc<Sequencer>,
+    seq: Arc<Sequencer>,
 ) -> impl FnOnce() -> anyhow::Result<()> {
     move || {
         let mut rec_buffer = [0; OSC_BUFFER_LEN];
-        loop {
+        while seq.params.read().status != SeqStatus::Shutdown {
             match udp_socket.recv(&mut rec_buffer) {
                 Ok(received) => {
                     let (_, packet) =
@@ -125,7 +122,7 @@ pub fn osc_process_closure(
                     match packet {
                         rosc::OscPacket::Message(msg) => {
                             println!("Received osc msg {:?}", msg);
-                            let r = osc_handling(&msg, &params_ref);
+                            let r = osc_handling(&msg, &seq);
                             if let Err(e) = r {
                                 println!("OSC message handling failed with: {:?}", e);
                             }
@@ -133,9 +130,16 @@ pub fn osc_process_closure(
                         rosc::OscPacket::Bundle(_) => unimplemented!(),
                     }
                 }
-                Err(e) => println!("recv function failed: {:?}", e),
+                Err(e) => {
+                    // Letting timeout errs pass silently
+                    if e.kind() != ErrorKind::WouldBlock {
+                        eprintln!("recv function failed: {:?}", e);
+                    }
+                }
             }
         }
+        println!("Osc process shutdown gracefully.");
+        Ok(())
     }
 }
 

@@ -20,7 +20,7 @@ Fixed base seqs (euclidian, minimalism, dub, random, counterpoint, etc..)
 --> output
 ```
 
-These sequencer lines work in parallell.
+These sequencer lines work in parallel.
 
 2 Models:
 
@@ -42,9 +42,6 @@ Additionally: choose the correct parameters for live user input.
 
 ### TODO:
 
-- Fix Set nb events freezes loop until stop start --> Fix reseed in fact
-- Fix/test set loop length bars
-- write macros for base_seq getters (or use https://docs.rs/parking_lot/latest/parking_lot/type.RwLock.html and map)
 - use frames for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames - inspi(see also links): https://github.com/free-creations/a2jmidi
 - If perf is bad: have a stream of events consumed in the jack process, filled by external threads for random deviation generation, based on base sequence. Use a dynamic stream height, flush when reseeding or so
 - LATER: have a central sequencer process that pushes out events to jack midi or osc sender
@@ -58,18 +55,18 @@ Additionally: choose the correct parameters for live user input.
   - note_len
   - velocity
 - Add random deviations (deviation cells) from BaseSeq: add gen_rand_note() in jack_process
-- Introduce cells: randomness functions that can be used for deviation or base, harm or rythm:
+- Introduce cells: randomness functions that can be used for deviation or base, harm or rhythm:
 
   - Overlapping/non-overlapping events (on same channel or not)
   - Chords
   - arpeggio
-  - polyrythms (is a relationship of rythms?)
+  - polyrhythms (is a relationship of rhythms?)
   - Retrigs
   - grooves: euclidian, minimalism, amapiano, contre-temps, kontrapunkt, dnb, acid techno, dub
   - lfo for osc param control
 
 - Make params sequencable
-- Add harmonic coherent transpose + iversions
+- Add harmonic coherent transpose + inversions
 - Add midi in for randomization seeding
 - Add midi rec for base seq
 - Add manual loop shortening

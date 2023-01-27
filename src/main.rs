@@ -2,7 +2,7 @@ use anyhow::Result;
 use jack::{Client, ClientOptions, RawMidi};
 use osc::{osc_process_closure, OSC_PORT};
 use seq::{EventType, SeqInternal, SeqInternalStatus, SeqStatus};
-use std::{io, net::UdpSocket, sync::Arc, thread};
+use std::{io, net::UdpSocket, sync::Arc, thread, time::Duration};
 
 use crate::seq::Sequencer;
 
@@ -58,7 +58,8 @@ fn main() -> Result<()> {
         while let Some(next_event) = &event_buffer.get(seq_int.event_head) {
             // println!("Next note Time {}", next_event.time);
 
-            let mut push_event = seq_int.event_in_cycle(next_event.time);
+            let next_event_time = (next_event.bar_pos as u64) * seq_params.get_step_len_in_us();
+            let mut push_event = seq_int.event_in_cycle(next_event_time);
 
             // We let the seq play once through all midi off notes when halting.
             let mut jump_event = false;
@@ -72,7 +73,7 @@ fn main() -> Result<()> {
                     }
                 }
             };
-            jump_event = jump_event || loop_len < next_event.time;
+            jump_event = jump_event || loop_len < next_event_time;
 
             if jump_event {
                 seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();
@@ -87,7 +88,7 @@ fn main() -> Result<()> {
                         out_buff.write(&raw_midi).unwrap();
                         println!(
                             "Sending midi note: Channel {:<5} Pitch {:<5} Vel {:<5} On/Off {:<5} Note Time {}",
-                            note.channel, note.pitch, note.velocity, note.on_off, next_event.time
+                            note.channel, note.pitch, note.velocity, note.on_off, next_event_time
                         );
                     }
                     EventType::_Fill => todo!(),
@@ -110,6 +111,7 @@ fn main() -> Result<()> {
             seq_int.status = SeqInternalStatus::Silence;
         }
         if seq_params.status == SeqStatus::Stop {
+            println!("Sequencer Stopped.");
             seq_int.stop_reset();
         }
 
@@ -124,16 +126,20 @@ fn main() -> Result<()> {
 
     // Start the OSC listening thread
     let udp_socket = UdpSocket::bind(format!("127.0.0.1:{}", OSC_PORT))?;
-    let osc_process = osc_process_closure(udp_socket, seq_arc);
+    // Setting the UDP recv timeout to 1s to allow for gracefull shutdown
+    udp_socket.set_read_timeout(Some(Duration::from_secs(1)))?;
+    let osc_process = osc_process_closure(udp_socket, seq_arc.clone());
     let osc_handler = thread::spawn(osc_process);
 
-    // Wait for user input to quit
+    // Graceful shutdown on user input
     println!("Press enter/return to quit...");
     let mut user_input = String::new();
     io::stdin().read_line(&mut user_input).ok();
+    seq_arc.params.write().status = SeqStatus::Shutdown;
     active_client.deactivate().unwrap();
-    let osc_res = osc_handler.join();
-    println!("OSC shutdown: {:?}", osc_res);
+    println!("Jack process shutdown.");
+    println!("Waiting for OSC process...");
+    osc_handler.join().unwrap()?;
 
     Ok(())
 }

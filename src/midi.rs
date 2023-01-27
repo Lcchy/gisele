@@ -65,10 +65,6 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
         .unwrap();
         let scale_notes = scale.notes();
 
-        // Rythmic quantization
-        let step_len_us = seq_params.get_step_len_in_us();
-        let loop_len_us = seq_params.get_loop_len_in_us();
-
         let mut step_offset = 0;
         for _ in 0..*nb_events {
             let velocity = rng.gen_range(0..127);
@@ -81,7 +77,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
                     velocity,
                     on_off: true,
                 }),
-                time: step_offset * step_len_us,
+                bar_pos: step_offset,
                 id: *id,
             };
             let event_midi_off = Event {
@@ -91,17 +87,16 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
                     velocity,
                     on_off: false,
                 }),
-                //TODO could be a problem, wrapping a quantized note_len when loop_len is off quantization, ie it will end off beat
-                time: ((step_offset + *note_len as u64) * step_len_us) % loop_len_us,
+                bar_pos: (step_offset + *note_len as u32) % seq_params.loop_length,
                 id: *id,
             };
 
             events_buffer.push(event_midi_on);
             events_buffer.push(event_midi_off);
-            let time_incr = rng.gen_range(0..loop_len_us);
+            let time_incr = rng.gen_range(0..seq_params.loop_length);
             step_offset = (step_offset + time_incr) % seq_params.loop_length;
         }
-        events_buffer.sort_by_key(|e| e.time);
+        events_buffer.sort_by_key(|e| e.bar_pos);
     } else {
         eprintln!("Could not insert BaseSeq as its not Random.")
     }
@@ -145,20 +140,19 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
         note_len,
     } = euclid_seq
     {
-        if seq_params.loop_length % *steps as u64 != 0 {
-            eprintln!("Could not generate euclidean rythm for indivisible loop-length.");
+        if seq_params.loop_length % *steps != 0 {
+            eprintln!("Could not generate euclidean rhythm for indivisible loop-length.");
             return events_buffer;
         }
 
-        let step_len_us = seq_params.get_step_len_in_us();
-        let euclid_step_len = step_len_us * seq_params.loop_length / *steps as u64;
-        let euclid_rythm = gen_euclid(*pulses, *steps);
+        let euclid_step_len_bar = seq_params.loop_length / *steps;
+        let euclid_rhythm = gen_euclid(*pulses, *steps);
 
         let velocity = 127;
         let pitch = note_to_midi_pitch(root_note);
 
         let mut time_offset = 0;
-        for i in euclid_rythm {
+        for i in euclid_rhythm {
             if i == 0 {
                 continue;
             }
@@ -170,7 +164,7 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
                     velocity,
                     on_off: true,
                 }),
-                time: time_offset,
+                bar_pos: time_offset,
                 id: *id,
             };
             let event_midi_off = Event {
@@ -180,12 +174,12 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
                     velocity,
                     on_off: false,
                 }),
-                time: (time_offset + (*note_len as u64) * step_len_us) % seq_params.loop_length,
+                bar_pos: (time_offset + *note_len) % seq_params.loop_length,
                 id: *id,
             };
             events_buffer.push(event_midi_on);
             events_buffer.push(event_midi_off);
-            time_offset += euclid_step_len;
+            time_offset += euclid_step_len_bar;
         }
     } else {
         eprintln!("Could not insert BaseSeq as its not Euclidean.")
