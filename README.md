@@ -42,6 +42,13 @@ Additionally: choose the correct parameters for live user input.
 
 ### TODO:
 
+- Add current bar log
+- Fix empty loop run after regenerate (ordered options):\
+  - Move SeqInternal into Sequencer object, guard it with RwLock, maybe on each SeqInternal fields?
+  - after regen, dichotimic find on next event by time, set it. (Could this dichotomic search be done on each iteration? Suboptimal)
+- Fix delay when set_bpm to smaller bpm
+
+- factorize main jack event loop into structs for clarity, see it as a sliding window with a semi-synced peek. This is the only way wee maintain low complexity
 - use frames for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames - inspi(see also links): https://github.com/free-creations/a2jmidi
 - If perf is bad: have a stream of events consumed in the jack process, filled by external threads for random deviation generation, based on base sequence. Use a dynamic stream height, flush when reseeding or so
 - LATER: have a central sequencer process that pushes out events to jack midi or osc sender

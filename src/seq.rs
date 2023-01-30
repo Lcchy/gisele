@@ -23,11 +23,11 @@ pub enum EventType {
 }
 
 pub struct Sequencer {
-    /// Write: osc process, Read: Jack process
+    /// Write: OSC process, Read: Jack process
     pub params: Arc<RwLock<SeqParams>>,
-    /// Event Bufffer
-    /// Events should be ordered by their times
-    /// Write: TBD, Read: Jack process
+    /// Event Buffer
+    /// Events are ordered by their times
+    /// Write: OSC process, Read: Jack process
     pub event_buffer: Arc<RwLock<Vec<Event>>>,
 }
 
@@ -69,13 +69,14 @@ impl Sequencer {
 
     pub fn add_base_seq(&self, base_seq_params: BaseSeqParams, root_note: Note, note_len: u32) {
         let mut seq_params = self.params.write();
-        seq_params.base_seq_incr += 1;
         let base_seq = BaseSeq {
             ty: base_seq_params,
             id: seq_params.base_seq_incr,
             root_note,
             note_len,
         };
+        println!("Inserted base sequence id {}", seq_params.base_seq_incr);
+        seq_params.base_seq_incr += 1;
         //Insert events
         let events = match base_seq_params {
             Random(_) => gen_rand_midi_vec(&seq_params, &base_seq),
@@ -112,8 +113,8 @@ impl Sequencer {
     }
 
     pub fn regen_base_seq(&self, base_seq: &BaseSeq) {
-        let seq_params = self.params.read();
         self.rm_base_seq(base_seq);
+        let seq_params = self.params.read();
         let regen = match base_seq.ty {
             BaseSeqParams::Random(_) => gen_rand_midi_vec(&seq_params, base_seq),
             BaseSeqParams::Euclid(_) => gen_euclid_midi_vec(&seq_params, base_seq),

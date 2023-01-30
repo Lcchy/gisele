@@ -87,8 +87,8 @@ fn main() -> Result<()> {
                         // Max event buff size was measured at ~32kbits ? In practice, 800-2200 midi msgs
                         out_buff.write(&raw_midi).unwrap();
                         println!(
-                            "Sending midi note: Channel {:<5} Pitch {:<5} Vel {:<5} On/Off {:<5} Note Time {}",
-                            note.channel, note.pitch, note.velocity, note.on_off, next_event_time
+                            "Sending midi note: Channel {:<5} Pitch {:<5} Vel {:<5} On/Off {:<5} Note pos in bars {}",
+                            note.channel, note.pitch, note.velocity, note.on_off, next_event.bar_pos
                         );
                     }
                     EventType::_Fill => todo!(),
