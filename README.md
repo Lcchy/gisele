@@ -44,7 +44,6 @@ Additionally: choose the correct parameters for live user input.
 
 - Add current bar log
 - Fix empty loop run after regenerate (ordered options):\
-  - Move SeqInternal into Sequencer object, guard it with RwLock, maybe on each SeqInternal fields?
   - after regen, dichotimic find on next event by time, set it. (Could this dichotomic search be done on each iteration? Suboptimal)
 - Fix delay when set_bpm to smaller bpm
 

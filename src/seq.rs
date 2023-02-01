@@ -25,6 +25,11 @@ pub enum EventType {
 pub struct Sequencer {
     /// Write: OSC process, Read: Jack process
     pub params: Arc<RwLock<SeqParams>>,
+    /// Current position in the event buffer.
+    /// Write: OSC + Jack processes
+    pub event_head: Arc<RwLock<usize>>,
+    /// Internal sequencer parameters, only accessed by the Jack loop
+    pub internal: Arc<RwLock<SeqInternal>>,
     /// Event Buffer
     /// Events are ordered by their times
     /// Write: OSC process, Read: Jack process
@@ -42,8 +47,10 @@ impl Sequencer {
             base_seq_incr: 0,
         };
         Sequencer {
-            event_buffer: Arc::new(RwLock::new(vec![])),
             params: Arc::new(RwLock::new(seq_params)),
+            event_head: Arc::new(RwLock::new(0)),
+            internal: Arc::new(RwLock::new(SeqInternal::new())),
+            event_buffer: Arc::new(RwLock::new(vec![])),
         }
     }
 
@@ -143,6 +150,17 @@ impl Sequencer {
         seq_params.base_seqs = vec![];
         seq_params.base_seq_incr = 0;
     }
+
+    pub fn stop_reset(&self, mut seq_int_lock: RwLockWriteGuard<SeqInternal>) {
+        *self.event_head.write() = 0;
+        seq_int_lock.j_window_time_start = 0;
+        seq_int_lock.j_window_time_end = 0;
+    }
+
+    pub fn incr_event_head(&self) {
+        let curr_event_head = *self.event_head.read();
+        *self.event_head.write() = (curr_event_head + 1) % self.event_buffer.read().len();
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, EnumString, Debug, FromPrimitive)]
@@ -215,8 +233,6 @@ pub struct SeqInternal {
     /// Indicates, when stopping, if we are on the final cycle before silence.
     /// Only noteOff events are allowed on final cycle.
     pub status: SeqInternalStatus,
-    /// Current position in the event buffer.
-    pub event_head: usize,
     /// Position of current jack cycle in sequencing time loop.
     /// In usecs. To be reset on loop or start/stop
     pub j_window_time_start: u64,
@@ -235,16 +251,11 @@ impl SeqInternal {
     pub fn new() -> Self {
         SeqInternal {
             status: SeqInternalStatus::Silence,
-            event_head: 0,
             j_window_time_start: 0,
             j_window_time_end: 0,
         }
     }
-    pub fn stop_reset(&mut self) {
-        self.event_head = 0;
-        self.j_window_time_start = 0;
-        self.j_window_time_end = 0;
-    }
+
     pub fn event_in_cycle(&self, event_time: u64) -> bool {
         // println!(
         //     "Window start {} | Window end {}",

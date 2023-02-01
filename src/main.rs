@@ -1,7 +1,7 @@
 use anyhow::Result;
 use jack::{Client, ClientOptions, RawMidi};
 use osc::{osc_process_closure, OSC_PORT};
-use seq::{EventType, SeqInternal, SeqInternalStatus, SeqStatus};
+use seq::{EventType, SeqInternalStatus, SeqStatus};
 use std::{io, net::UdpSocket, sync::Arc, thread, time::Duration};
 
 use crate::seq::Sequencer;
@@ -23,11 +23,11 @@ fn main() -> Result<()> {
     // Init values
     let seq_arc = Arc::new(Sequencer::new(INIT_BPM, 16));
     let seq_ref = seq_arc.clone();
-    let mut seq_int = SeqInternal::new();
 
     // Define the Jack process
     let jack_process = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
         let seq_params = seq_ref.params.read();
+        let mut seq_int = seq_ref.internal.write();
 
         // Handle Sequencer statuses
         if seq_params.status == SeqStatus::Start {
@@ -53,69 +53,76 @@ fn main() -> Result<()> {
         // println!("Curr frames {}", cy_times.current_frames);
         // println!("frames since start {}", ps.frames_since_cycle_start());
 
-        let event_head_before = seq_int.event_head;
+        let event_head_before = *seq_ref.event_head.read();
         let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;
-        while let Some(next_event) = &event_buffer.get(seq_int.event_head) {
-            // println!("Next note Time {}", next_event.time);
+        loop {
+            let curr_event_head = *seq_ref.event_head.read();
+            if let Some(next_event) = &event_buffer.get(curr_event_head) {
+                // println!("Next note Time {}", next_event.time);
 
-            let next_event_time = (next_event.bar_pos as u64) * seq_params.get_step_len_in_us();
-            let mut push_event = seq_int.event_in_cycle(next_event_time);
+                let next_event_time = (next_event.bar_pos as u64) * seq_params.get_step_len_in_us();
+                let mut push_event = seq_int.event_in_cycle(next_event_time);
 
-            // We let the seq play once through all midi off notes when halting.
-            let mut jump_event = false;
-            if halting {
-                if let EventType::MidiNote(n) = next_event.e_type {
-                    if !n.on_off {
-                        // Let through all midi off msgs for Pause and stop.
-                        push_event = true;
-                    } else if (seq_int.event_head + 1) % event_buffer.len() != event_head_before {
-                        jump_event = true;
+                // We let the seq play once through all midi off notes when halting.
+                let mut jump_event = false;
+                if halting {
+                    if let EventType::MidiNote(n) = next_event.e_type {
+                        if !n.on_off {
+                            // Let through all midi off msgs for Pause and stop.
+                            push_event = true;
+                        } else if (*seq_ref.event_head.read() + 1) % event_buffer.len()
+                            != event_head_before
+                        {
+                            jump_event = true;
+                        }
                     }
-                }
-            };
-            jump_event = jump_event || loop_len < next_event_time;
+                };
+                jump_event = jump_event || loop_len < next_event_time;
 
-            if jump_event {
-                seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();
-            } else if push_event {
-                match next_event.e_type {
-                    EventType::MidiNote(ref note) => {
-                        let raw_midi = RawMidi {
-                            time: ps.frames_since_cycle_start(),
-                            bytes: &note.get_raw_note_on_bytes(),
-                        };
-                        // Max event buff size was measured at ~32kbits ? In practice, 800-2200 midi msgs
-                        out_buff.write(&raw_midi).unwrap();
-                        println!(
+                if jump_event {
+                    seq_ref.incr_event_head();
+                } else if push_event {
+                    match next_event.e_type {
+                        EventType::MidiNote(ref note) => {
+                            let raw_midi = RawMidi {
+                                time: ps.frames_since_cycle_start(),
+                                bytes: &note.get_raw_note_on_bytes(),
+                            };
+                            // Max event buff size was measured at ~32kbits ? In practice, 800-2200 midi msgs
+                            out_buff.write(&raw_midi).unwrap();
+                            println!(
                             "Sending midi note: Channel {:<5} Pitch {:<5} Vel {:<5} On/Off {:<5} Note pos in bars {}",
                             note.channel, note.pitch, note.velocity, note.on_off, next_event.bar_pos
                         );
+                        }
+                        EventType::_Fill => todo!(),
                     }
-                    EventType::_Fill => todo!(),
+                    seq_ref.incr_event_head();
+                } else {
+                    // Complete the current cycle when reaching a note to be played in the next one
+                    break;
                 }
-                seq_int.event_head = (seq_int.event_head + 1) % event_buffer.len();
-            } else {
-                // Complete the current cycle when reaching a note to be played in the next one
-                break;
-            }
 
-            // Stop playing when having completed a whole loop
-            if seq_int.event_head == event_head_before {
+                // Stop when having played all noteOffs in loop before pause/stop
+                if *seq_ref.event_head.read() == event_head_before {
+                    break;
+                }
+            } else {
                 break;
             }
         }
 
+        seq_int.j_window_time_start = seq_int.j_window_time_end;
+
         // Reset the seq to start or current position in case of a stop or pause
         if seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop {
-            seq_int.event_head = event_head_before;
+            *seq_ref.event_head.write() = event_head_before;
             seq_int.status = SeqInternalStatus::Silence;
         }
         if seq_params.status == SeqStatus::Stop {
             println!("Sequencer Stopped.");
-            seq_int.stop_reset();
+            seq_ref.stop_reset(seq_int);
         }
-
-        seq_int.j_window_time_start = seq_int.j_window_time_end;
 
         jack::Control::Continue
     };
