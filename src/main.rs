@@ -43,15 +43,25 @@ fn main() -> Result<()> {
         let cy_times = ps.cycle_times().unwrap();
 
         // we increment the current jack process cycle time window dynamically to allow speed playback variations
+        println!("seq_int.j_window_time_end {}", seq_int.j_window_time_end);
+        println!("cy_times.next_usecs {}", cy_times.next_usecs);
+        println!("cy_times.current_usecs {}", cy_times.current_usecs);
+        println!("seq_params.bpm {}", seq_params.bpm);
+        println!("loop_len {}", loop_len);
+        // We loop the start in case of a loop_len variation due to bpm change
+        seq_int.j_window_time_start %= loop_len;
         seq_int.j_window_time_end = (seq_int.j_window_time_end
             + (((cy_times.next_usecs - cy_times.current_usecs) as f64)
                 * (seq_params.bpm as f64 / INIT_BPM as f64)) as u64)
             % loop_len;
 
-        // println!("next_event.time {}", next_event.time);
-        // println!("Curr time {}", params_ref.curr_time_end);
-        // println!("Curr frames {}", cy_times.current_frames);
-        // println!("frames since start {}", ps.frames_since_cycle_start());
+        let new_curr_bar = (seq_int.j_window_time_end / seq_params.get_step_len_in_us()) as u32;
+        let new_curr_bar_s = (seq_int.j_window_time_start / seq_params.get_step_len_in_us()) as u32;
+        println!("Current bar start: {}", new_curr_bar_s);
+        println!("Current bar end: {}", new_curr_bar);
+        if new_curr_bar != seq_int.curr_bar {
+            seq_int.curr_bar = new_curr_bar;
+        }
 
         let event_head_before = *seq_ref.event_head.read();
         let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;

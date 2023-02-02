@@ -251,6 +251,9 @@ pub struct SeqInternal {
     /// Position of current jack cycle in sequencing time loop.
     /// In usecs. To be reset on loop or start/stop
     pub j_window_time_end: u64,
+    /// Current bar position in loop rhythm grid.
+    /// Stored here for logging purposes
+    pub curr_bar: u32,
 }
 
 #[derive(PartialEq, Eq)]
@@ -265,6 +268,7 @@ impl SeqInternal {
             status: SeqInternalStatus::Silence,
             j_window_time_start: 0,
             j_window_time_end: 0,
+            curr_bar: 0,
         }
     }
 
