@@ -43,9 +43,8 @@ Additionally: choose the correct parameters for live user input.
 ### TODO:
 
 - Add current bar log
-- Fix empty loop run after regenerate (ordered options):\
-  - after regen, dichotimic find on next event by time, set it. (Could this dichotomic search be done on each iteration? Suboptimal)
 - Fix delay when set_bpm to smaller bpm
+- Refactor step_len into bar_len?
 
 - factorize main jack event loop into structs for clarity, see it as a sliding window with a semi-synced peek. This is the only way wee maintain low complexity
 - use frames for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames - inspi(see also links): https://github.com/free-creations/a2jmidi

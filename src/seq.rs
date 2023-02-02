@@ -127,6 +127,18 @@ impl Sequencer {
             BaseSeqParams::Euclid(_) => gen_euclid_midi_vec(&seq_params, base_seq),
         };
         self.insert_events(regen);
+
+        // Reset event_head to next idx right after the current jack window
+        let jck_right_window_bars =
+            self.internal.read().j_window_time_end / seq_params.get_step_len_in_us();
+
+        match self
+            .event_buffer
+            .read()
+            .binary_search_by_key(&(jck_right_window_bars as u32 + 1), |e| e.bar_pos)
+        {
+            Ok(idx) | Err(idx) => *self.event_head.write() = idx,
+        }
     }
 
     pub fn transpose(&self, base_seq: &mut BaseSeq, target_root_note: Note) {
