@@ -39,28 +39,17 @@ fn main() -> Result<()> {
 
         let event_buffer = &*seq_ref.event_buffer.read();
         let mut out_buff = out_port.writer(ps);
-        let loop_len = seq_params.get_loop_len_in_us();
         let cy_times = ps.cycle_times().unwrap();
 
-        // we increment the current jack process cycle time window dynamically to allow speed playback variations
-        println!("seq_int.j_window_time_end {}", seq_int.j_window_time_end);
-        println!("cy_times.next_usecs {}", cy_times.next_usecs);
-        println!("cy_times.current_usecs {}", cy_times.current_usecs);
-        println!("seq_params.bpm {}", seq_params.bpm);
-        println!("loop_len {}", loop_len);
-        // We loop the start in case of a loop_len variation due to bpm change
-        seq_int.j_window_time_start %= loop_len;
-        seq_int.j_window_time_end = (seq_int.j_window_time_end
-            + (((cy_times.next_usecs - cy_times.current_usecs) as f64)
-                * (seq_params.bpm as f64 / INIT_BPM as f64)) as u64)
-            % loop_len;
+        // We increment the current jack process time window dynamically to allow for speed playback variations
+        seq_int.j_window_time_end +=
+            ((seq_params.bpm as u64 * (cy_times.next_usecs - cy_times.current_usecs)) as f64) / 6e7;
+        seq_int.j_window_time_end %= seq_params.loop_length as f64;
 
-        let new_curr_bar = (seq_int.j_window_time_end / seq_params.get_step_len_in_us()) as u32;
-        let new_curr_bar_s = (seq_int.j_window_time_start / seq_params.get_step_len_in_us()) as u32;
-        println!("Current bar start: {}", new_curr_bar_s);
-        println!("Current bar end: {}", new_curr_bar);
+        let new_curr_bar = seq_int.j_window_time_end as u32;
         if new_curr_bar != seq_int.curr_bar {
             seq_int.curr_bar = new_curr_bar;
+            println!("Current bar: {} / {}", new_curr_bar, seq_params.loop_length);
         }
 
         let event_head_before = *seq_ref.event_head.read();
@@ -68,10 +57,7 @@ fn main() -> Result<()> {
         loop {
             let curr_event_head = *seq_ref.event_head.read();
             if let Some(next_event) = &event_buffer.get(curr_event_head) {
-                // println!("Next note Time {}", next_event.time);
-
-                let next_event_time = (next_event.bar_pos as u64) * seq_params.get_step_len_in_us();
-                let mut push_event = seq_int.event_in_cycle(next_event_time);
+                let mut push_event = seq_int.event_in_cycle(next_event.bar_pos as f64);
 
                 // We let the seq play once through all midi off notes when halting.
                 let mut jump_event = false;
@@ -87,7 +73,6 @@ fn main() -> Result<()> {
                         }
                     }
                 };
-                jump_event = jump_event || loop_len < next_event_time;
 
                 if jump_event {
                     seq_ref.incr_event_head();

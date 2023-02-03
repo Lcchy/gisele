@@ -129,14 +129,12 @@ impl Sequencer {
         self.insert_events(regen);
 
         // Reset event_head to next idx right after the current jack window
-        let jck_right_window_bars =
-            self.internal.read().j_window_time_end / seq_params.get_step_len_in_us();
-
         match self
             .event_buffer
             .read()
-            .binary_search_by_key(&(jck_right_window_bars as u32 + 1), |e| e.bar_pos)
-        {
+            .binary_search_by_key(&(self.internal.read().j_window_time_end as u32 + 1), |e| {
+                e.bar_pos
+            }) {
             Ok(idx) | Err(idx) => *self.event_head.write() = idx,
         }
     }
@@ -165,8 +163,8 @@ impl Sequencer {
 
     pub fn stop_reset(&self, mut seq_int_lock: RwLockWriteGuard<SeqInternal>) {
         *self.event_head.write() = 0;
-        seq_int_lock.j_window_time_start = 0;
-        seq_int_lock.j_window_time_end = 0;
+        seq_int_lock.j_window_time_start = 0.;
+        seq_int_lock.j_window_time_end = 0.;
     }
 
     pub fn incr_event_head(&self) {
@@ -194,16 +192,6 @@ pub struct SeqParams {
     pub base_seqs: Vec<BaseSeq>,
     /// Counter of total nb of BaseSeqs ever created, used for [BaseSeq] id
     pub base_seq_incr: u32,
-}
-
-impl SeqParams {
-    pub fn get_loop_len_in_us(&self) -> u64 {
-        ((self.loop_length as f64) * 60_000_000. / self.bpm as f64) as u64
-    }
-
-    pub fn get_step_len_in_us(&self) -> u64 {
-        (60_000_000. / self.bpm as f64) as u64
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -247,10 +235,10 @@ pub struct SeqInternal {
     pub status: SeqInternalStatus,
     /// Position of current jack cycle in sequencing time loop.
     /// In usecs. To be reset on loop or start/stop
-    pub j_window_time_start: u64,
+    pub j_window_time_start: f64,
     /// Position of current jack cycle in sequencing time loop.
     /// In usecs. To be reset on loop or start/stop
-    pub j_window_time_end: u64,
+    pub j_window_time_end: f64,
     /// Current bar position in loop rhythm grid.
     /// Stored here for logging purposes
     pub curr_bar: u32,
@@ -266,13 +254,13 @@ impl SeqInternal {
     pub fn new() -> Self {
         SeqInternal {
             status: SeqInternalStatus::Silence,
-            j_window_time_start: 0,
-            j_window_time_end: 0,
+            j_window_time_start: 0.,
+            j_window_time_end: 0.,
             curr_bar: 0,
         }
     }
 
-    pub fn event_in_cycle(&self, event_time: u64) -> bool {
+    pub fn event_in_cycle(&self, event_time: f64) -> bool {
         // println!(
         //     "Window start {} | Window end {}",
         //     self.j_window_time_start, self.j_window_time_end
