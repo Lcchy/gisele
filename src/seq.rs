@@ -3,12 +3,14 @@ use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
 use rust_music_theory::note::Note;
+use std::cmp::min;
 use std::sync::Arc;
 use strum::EnumString;
 
 use crate::midi::{gen_euclid_midi_vec, gen_rand_midi_vec, note_to_midi_pitch, MidiNote};
 use crate::seq::BaseSeqParams::{Euclid, Random};
 
+#[derive(Debug)]
 pub struct Event {
     pub e_type: EventType,
     /// Nb bars from sequence start (i.e. position on bpm grid)
@@ -17,6 +19,7 @@ pub struct Event {
     pub id: u32,
 }
 
+#[derive(Debug)]
 pub enum EventType {
     MidiNote(MidiNote),
     _Fill,
@@ -126,13 +129,12 @@ impl Sequencer {
         self.insert_events(regen);
 
         // Reset event_head to next idx right after the current jack window
-        match self
-            .event_buffer
-            .read()
+        let event_buff = self.event_buffer.read();
+        match event_buff
             .binary_search_by_key(&(self.internal.read().j_window_time_end as u32 + 1), |e| {
                 e.bar_pos
             }) {
-            Ok(idx) | Err(idx) => *self.event_head.write() = idx,
+            Ok(idx) | Err(idx) => *self.event_head.write() = min(idx, event_buff.len() - 1),
         }
     }
 
@@ -194,7 +196,7 @@ pub struct SeqParams {
 //////////////////////////////////////////////////////////////////////////
 /// Base Sequences
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum BaseSeqParams {
     Random(RandomBase),
     Euclid(EuclidBase),
@@ -210,12 +212,12 @@ pub struct BaseSeq {
     pub note_len: u32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct RandomBase {
     pub nb_events: u32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct EuclidBase {
     pub pulses: u32,
     pub steps: u32,

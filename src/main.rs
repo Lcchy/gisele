@@ -46,13 +46,16 @@ fn main() -> Result<()> {
             ((seq_params.bpm as u64 * (cy_times.next_usecs - cy_times.current_usecs)) as f64) / 6e7;
         seq_int.j_window_time_end %= seq_params.loop_length as f64;
 
+        let event_head_before = *seq_ref.event_head.read();
         let new_curr_bar = seq_int.j_window_time_end as u32;
         if new_curr_bar != seq_int.curr_bar {
             seq_int.curr_bar = new_curr_bar;
-            println!("Current bar: {} / {}", new_curr_bar, seq_params.loop_length);
+            println!(
+                "Current bar: {} / {} | Event head at {}",
+                new_curr_bar, seq_params.loop_length, event_head_before
+            );
         }
 
-        let event_head_before = *seq_ref.event_head.read();
         let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;
         loop {
             let curr_event_head = *seq_ref.event_head.read();

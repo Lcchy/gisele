@@ -88,12 +88,15 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             } = *base_seq_mut
             {
                 *nb_events = parse_to_int(osc_msg, 1)? as u32;
-                println!("Reseeding..");
-                seq.regen_base_seq(&base_seq_mut);
-                println!("Finished reseeding");
             } else {
-                eprintln!("The given base_seq_id is wrong.")
+                bail!("The given base_seq_id is wrong.");
             };
+            // We cannot directly downgrade a mapped write lock, see: https://github.com/Amanieu/parking_lot/issues/198
+            drop(base_seq_mut);
+            let base_seq = seq.get_base_seq(base_seq_id)?;
+            println!("Reseeding..");
+            seq.regen_base_seq(&base_seq);
+            println!("Finished reseeding");
         }
 
         _ => bail!("OSC path was not recognized"),
