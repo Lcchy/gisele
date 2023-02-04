@@ -1,3 +1,4 @@
+use anyhow::bail;
 use num_derive::FromPrimitive;
 use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
@@ -28,6 +29,8 @@ pub enum EventType {
 pub struct Sequencer {
     /// Write: OSC process, Read: Jack process
     pub params: Arc<RwLock<SeqParams>>,
+    /// Current state of the [BaseSeq]s that constitute the EventBuffer
+    pub base_seqs: Arc<RwLock<Vec<BaseSeq>>>,
     /// Current position in the event buffer.
     /// Write: OSC + Jack processes
     pub event_head: Arc<RwLock<usize>>,
@@ -46,11 +49,11 @@ impl Sequencer {
             bpm,
             loop_length,
             // note_length: 5,
-            base_seqs: vec![],
             base_seq_incr: 0,
         };
         Sequencer {
             params: Arc::new(RwLock::new(seq_params)),
+            base_seqs: Arc::new(RwLock::new(vec![])),
             event_head: Arc::new(RwLock::new(0)),
             internal: Arc::new(RwLock::new(SeqInternal::new())),
             event_buffer: Arc::new(RwLock::new(vec![])),
@@ -93,13 +96,13 @@ impl Sequencer {
             Euclid(_) => gen_euclid_midi_vec(&seq_params, &base_seq),
         };
         self.insert_events(events);
-        seq_params.base_seqs.push(base_seq);
+        self.base_seqs.write().push(base_seq);
     }
 
     /// BaseSeq getter, mapping the lock contents in order to preserve the lifetime
     pub fn get_base_seq(&self, base_seq_id: u32) -> anyhow::Result<MappedRwLockReadGuard<BaseSeq>> {
-        RwLockReadGuard::try_map(self.params.read(), |p| {
-            p.base_seqs.iter().find(|s| s.id == base_seq_id)
+        RwLockReadGuard::try_map(self.base_seqs.read(), |p| {
+            p.iter().find(|s| s.id == base_seq_id)
         })
         .map_err(|_| anyhow::format_err!("Base sequence could not be found."))
     }
@@ -109,18 +112,24 @@ impl Sequencer {
         &self,
         base_seq_id: u32,
     ) -> anyhow::Result<MappedRwLockWriteGuard<BaseSeq>> {
-        RwLockWriteGuard::try_map(self.params.write(), |p| {
-            p.base_seqs.iter_mut().find(|s| s.id == base_seq_id)
+        RwLockWriteGuard::try_map(self.base_seqs.write(), |p| {
+            p.iter_mut().find(|s| s.id == base_seq_id)
         })
         .map_err(|_| anyhow::format_err!("Base sequence could not be found."))
     }
 
-    pub fn rm_base_seq(&self, base_seq: &BaseSeq) {
-        self.event_buffer.write().retain(|e| e.id != base_seq.id);
+    pub fn rm_base_seq_events(&self, base_seq_id: u32) {
+        self.event_buffer.write().retain(|e| e.id != base_seq_id);
     }
 
-    pub fn regen_base_seq(&self, base_seq: &BaseSeq) {
-        self.rm_base_seq(base_seq);
+    pub fn regen_base_seq(&self, base_seq_id: u32) -> anyhow::Result<()> {
+        let base_seq = self.get_base_seq(base_seq_id)?;
+        self._regen_base_seq(&base_seq);
+        Ok(())
+    }
+
+    fn _regen_base_seq(&self, base_seq: &BaseSeq) {
+        self.rm_base_seq_events(base_seq.id);
         let seq_params = self.params.read();
         let regen = match base_seq.ty {
             BaseSeqParams::Random(_) => gen_rand_midi_vec(&seq_params, base_seq),
@@ -138,25 +147,62 @@ impl Sequencer {
         }
     }
 
-    pub fn transpose(&self, base_seq: &mut BaseSeq, target_root_note: Note) {
-        let root_note_midi = note_to_midi_pitch(&base_seq.root_note);
+    pub fn set_nb_events(&self, base_seq_id: u32, target_nb_events: u32) -> anyhow::Result<()> {
+        println!("Regenerating base sequence..");
+        let mut base_seq_mut = self.get_base_seq_mut(base_seq_id)?;
+        if let BaseSeq {
+            ty: Random(RandomBase { ref mut nb_events }),
+            ..
+        } = *base_seq_mut
+        {
+            *nb_events = target_nb_events;
+        } else {
+            bail!("The given base_seq_id is wrong.");
+        };
+        self._regen_base_seq(&base_seq_mut);
+        Ok(())
+    }
+
+    pub fn change_note_len(&self, base_seq_id: u32, target_note_len: u32) -> anyhow::Result<()> {
+        let loop_len = self.params.read().loop_length;
+        let mut base_seq_mut = self.get_base_seq_mut(base_seq_id)?;
+        for event in self.event_buffer.write().iter_mut() {
+            if event.id == base_seq_id {
+                if let EventType::MidiNote(MidiNote { on_off, .. }) = event.e_type {
+                    if !on_off {
+                        event.bar_pos = (event.bar_pos as i32 + target_note_len as i32
+                            - base_seq_mut.note_len as i32)
+                            as u32;
+                        event.bar_pos %= loop_len;
+                    }
+                }
+            }
+        }
+        base_seq_mut.note_len = target_note_len;
+        Ok(())
+    }
+
+    pub fn transpose(&self, base_seq_id: u32, target_root_note: Note) -> anyhow::Result<()> {
+        let mut base_seq_mut = self.get_base_seq_mut(base_seq_id)?;
+        let root_note_midi = note_to_midi_pitch(&base_seq_mut.root_note);
         let target_root_note_midi = note_to_midi_pitch(&target_root_note);
         let pitch_diff = target_root_note_midi as i32 - root_note_midi as i32;
         for event in self.event_buffer.write().iter_mut() {
-            if event.id == base_seq.id {
+            if event.id == base_seq_mut.id {
                 if let EventType::MidiNote(MidiNote { ref mut pitch, .. }) = event.e_type {
                     *pitch = (*pitch as i32 + pitch_diff).clamp(0, 127) as u8;
                 }
             }
         }
-        base_seq.root_note = target_root_note;
+        base_seq_mut.root_note = target_root_note;
+        Ok(())
     }
 
     /// Delete all BaseSeqs, empty the EventBuffer
     pub fn empty(&self) {
         *self.event_buffer.write() = vec![];
+        *self.base_seqs.write() = vec![];
         let mut seq_params = self.params.write();
-        seq_params.base_seqs = vec![];
         seq_params.base_seq_incr = 0;
     }
 
@@ -187,8 +233,6 @@ pub struct SeqParams {
     pub bpm: u16,
     /// In bars, 16 is 4 measures
     pub loop_length: u32,
-    /// Current state of the [BaseSeq]s that constitute the EventBuffer
-    pub base_seqs: Vec<BaseSeq>,
     /// Counter of total nb of BaseSeqs ever created, used for [BaseSeq] id
     pub base_seq_incr: u32,
 }
@@ -261,8 +305,8 @@ impl SeqInternal {
 
     pub fn event_in_cycle(&self, event_time: f64) -> bool {
         // println!(
-        //     "Window start {} | Window end {}",
-        //     self.j_window_time_start, self.j_window_time_end
+        //     "Window start {} | Event Time {} | Window end {}",
+        //     self.j_window_time_start, event_time, self.j_window_time_end
         // );
         if self.j_window_time_start < self.j_window_time_end {
             self.j_window_time_start <= event_time && event_time < self.j_window_time_end

@@ -76,6 +76,7 @@ fn main() -> Result<()> {
                         }
                     }
                 };
+                jump_event = jump_event || seq_params.loop_length <= next_event.bar_pos;
 
                 if jump_event {
                     seq_ref.incr_event_head();

@@ -5,9 +5,8 @@ use std::{io::ErrorKind, net::UdpSocket, sync::Arc};
 
 use crate::{
     midi::midi_pitch_to_note,
-    seq::BaseSeq,
     seq::{
-        BaseSeqParams::{self, Random},
+        BaseSeqParams::{self},
         EuclidBase, RandomBase, SeqStatus,
     },
     Sequencer,
@@ -36,38 +35,28 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/regenerate" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let base_seq = seq.get_base_seq(base_seq_id)?;
-            println!("Regenerating base sequence..");
-            seq.regen_base_seq(&base_seq);
-            println!("Finished regenerating");
+            seq.regen_base_seq(base_seq_id)?;
         }
         "/gisele/set_root" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id)?;
             let target_note = midi_pitch_to_note(parse_to_int(osc_msg, 1)? as u8);
-            seq.transpose(&mut base_seq_mut, target_note);
+            seq.transpose(base_seq_id, target_note)?;
         }
         "/gisele/set_note_len" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id)?;
-            base_seq_mut.note_len = parse_to_int(osc_msg, 1)? as u32;
-            println!("Regenerating base sequence..");
-            seq.regen_base_seq(&base_seq_mut);
-            println!("Finished regenerating");
+            let note_len = parse_to_int(osc_msg, 1)? as u32;
+            seq.change_note_len(base_seq_id, note_len)?;
         }
         "/gisele/empty" => {
             seq.empty();
             seq.params.write().status = SeqStatus::Stop;
-            println!("Finished emptying");
         }
         "/gisele/add_random_base" => {
             let root_note = parse_to_int(osc_msg, 0)? as u8;
             let note_len = parse_to_int(osc_msg, 1)? as u32;
             let nb_events = parse_to_int(osc_msg, 2)? as u32;
             let base_seq_params = BaseSeqParams::Random(RandomBase { nb_events });
-            println!("Inserting..");
             seq.add_base_seq(base_seq_params, midi_pitch_to_note(root_note), note_len);
-            println!("Finished inserting");
         }
         "/gisele/add_euclid_base" => {
             let root_note = parse_to_int(osc_msg, 0)? as u8;
@@ -75,30 +64,13 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             let pulses = parse_to_int(osc_msg, 2)? as u32;
             let steps = parse_to_int(osc_msg, 3)? as u32;
             let base_seq_params = BaseSeqParams::Euclid(EuclidBase { pulses, steps });
-            println!("Inserting..");
             seq.add_base_seq(base_seq_params, midi_pitch_to_note(root_note), note_len);
-            println!("Finished inserting");
         }
         "/gisele/random_base/set_nb_events" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id)?;
-            if let BaseSeq {
-                ty: Random(RandomBase { ref mut nb_events }),
-                ..
-            } = *base_seq_mut
-            {
-                *nb_events = parse_to_int(osc_msg, 1)? as u32;
-            } else {
-                bail!("The given base_seq_id is wrong.");
-            };
-            // We cannot directly downgrade a mapped write lock, see: https://github.com/Amanieu/parking_lot/issues/198
-            drop(base_seq_mut);
-            let base_seq = seq.get_base_seq(base_seq_id)?;
-            println!("Reseeding..");
-            seq.regen_base_seq(&base_seq);
-            println!("Finished reseeding");
+            let nb_events = parse_to_int(osc_msg, 1)? as u32;
+            seq.set_nb_events(base_seq_id, nb_events)?;
         }
-
         _ => bail!("OSC path was not recognized"),
     }
     println!("Osc command success.");
