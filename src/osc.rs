@@ -36,20 +36,20 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/regenerate" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let base_seq = seq.get_base_seq(base_seq_id);
+            let base_seq = seq.get_base_seq(base_seq_id)?;
             println!("Regenerating base sequence..");
             seq.regen_base_seq(&base_seq);
             println!("Finished regenerating");
         }
         "/gisele/set_root" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id);
+            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id)?;
             let target_note = midi_pitch_to_note(parse_to_int(osc_msg, 1)? as u8);
             seq.transpose(&mut base_seq_mut, target_note);
         }
         "/gisele/set_note_len" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id);
+            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id)?;
             base_seq_mut.note_len = parse_to_int(osc_msg, 1)? as u32;
             println!("Regenerating base sequence..");
             seq.regen_base_seq(&base_seq_mut);
@@ -81,7 +81,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/random_base/set_nb_events" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id);
+            let mut base_seq_mut = seq.get_base_seq_mut(base_seq_id)?;
             if let BaseSeq {
                 ty: Random(RandomBase { ref mut nb_events }),
                 ..

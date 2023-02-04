@@ -94,25 +94,22 @@ impl Sequencer {
     }
 
     /// BaseSeq getter, mapping the lock contents in order to preserve the lifetime
-    pub fn get_base_seq(&self, base_seq_id: u32) -> MappedRwLockReadGuard<BaseSeq> {
-        RwLockReadGuard::map(self.params.read(), |p| {
-            p.base_seqs
-                .iter()
-                .find(|s| s.id == base_seq_id)
-                .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))
-                .unwrap()
+    pub fn get_base_seq(&self, base_seq_id: u32) -> anyhow::Result<MappedRwLockReadGuard<BaseSeq>> {
+        RwLockReadGuard::try_map(self.params.read(), |p| {
+            p.base_seqs.iter().find(|s| s.id == base_seq_id)
         })
+        .map_err(|_| anyhow::format_err!("Base sequence could not be found."))
     }
 
     /// BaseSeq mutable getter, mapping the lock contents in order to preserve the lifetime
-    pub fn get_base_seq_mut(&self, base_seq_id: u32) -> MappedRwLockWriteGuard<BaseSeq> {
-        RwLockWriteGuard::map(self.params.write(), |p| {
-            p.base_seqs
-                .iter_mut()
-                .find(|s| s.id == base_seq_id)
-                .ok_or_else(|| anyhow::format_err!("Base sequence could not be found."))
-                .unwrap()
+    pub fn get_base_seq_mut(
+        &self,
+        base_seq_id: u32,
+    ) -> anyhow::Result<MappedRwLockWriteGuard<BaseSeq>> {
+        RwLockWriteGuard::try_map(self.params.write(), |p| {
+            p.base_seqs.iter_mut().find(|s| s.id == base_seq_id)
         })
+        .map_err(|_| anyhow::format_err!("Base sequence could not be found."))
     }
 
     pub fn rm_base_seq(&self, base_seq: &BaseSeq) {
