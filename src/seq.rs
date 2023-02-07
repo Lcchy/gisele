@@ -168,13 +168,30 @@ impl Sequencer {
 
     fn sync_event_head(&self) {
         // Reset event_head to next idx right after the current jack window
+        // The preliminary binary search is an optional optimization.
         let event_buff = self.event_buffer.read();
-        match event_buff
-            .binary_search_by_key(&(self.internal.read().j_window_time_end as u32 + 1), |e| {
+        let mut new_head = match event_buff
+            .binary_search_by_key(&(self.internal.read().j_window_time_end as u32), |e| {
                 e.bar_pos
             }) {
-            Ok(idx) | Err(idx) => *self.event_head.write() = min(idx, event_buff.len() - 1),
+            Ok(idx) | Err(idx) => idx,
+        };
+
+        if new_head == event_buff.len() {
+            new_head = 0;
+        } else if let Some(idx) = event_buff[new_head..]
+            .iter()
+            .position(|e| e.bar_pos > event_buff[new_head].bar_pos)
+        {
+            // As the return of the binary search for multiple matches is arbitrary,
+            // we look for the exact event.
+            new_head += idx;
+        } else {
+            new_head = 0;
         }
+
+        *self.event_head.write() = min(new_head, event_buff.len() - 1);
+
         println!("Event head synced!")
     }
 

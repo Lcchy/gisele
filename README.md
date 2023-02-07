@@ -51,6 +51,7 @@ Additionally: choose the correct parameters for live user input.
 - If perf is bad: have a stream of events consumed in the jack process, filled by external threads for random deviation generation, based on base sequence. Use a dynamic stream height, flush when reseeding or so
 - LATER: have a central sequencer process that pushes out events to jack midi or osc sender
 - Clean up unwraps
+- Optimize sync_event_head: set to event in curr jack window if we know the cycle to be just about to play | Ambitious and secondary
 
 ### Steps:
 
