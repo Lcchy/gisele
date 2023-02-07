@@ -11,7 +11,7 @@ use strum::EnumString;
 use crate::midi::{gen_euclid_midi_vec, gen_rand_midi_vec, note_to_midi_pitch, MidiNote};
 use crate::seq::BaseSeqParams::{Euclid, Random};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Event {
     pub e_type: EventType,
     /// Nb bars from sequence start (i.e. position on bpm grid)
@@ -20,7 +20,16 @@ pub struct Event {
     pub id: u32,
 }
 
-#[derive(Debug)]
+impl Event {
+    fn is_note_on_off(&self) -> bool {
+        match self.e_type {
+            EventType::MidiNote(n) => n.on_off,
+            EventType::_Fill => unimplemented!(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum EventType {
     MidiNote(MidiNote),
     _Fill,
@@ -62,22 +71,40 @@ impl Sequencer {
 
     ///The events need to be sorted by their time position
     pub fn insert_events(&self, events: Vec<Event>) {
-        let mut buff_idx = 0;
+        println!(
+            "Notes to insert {:#?}",
+            events
+                .iter()
+                .map(|e| (e.bar_pos, e.is_note_on_off()))
+                .collect::<Vec<(u32, bool)>>()
+        );
         let mut event_buffer_mut = self.event_buffer.write();
-        if event_buffer_mut.len() == 0 {
-            *event_buffer_mut = events;
-            return;
-        }
-        for event in events {
-            if event.bar_pos < event_buffer_mut[buff_idx].bar_pos {
-                event_buffer_mut.insert(buff_idx, event);
-            } else {
-                buff_idx += 1;
-                if buff_idx == event_buffer_mut.len() {
-                    event_buffer_mut.insert(buff_idx, event);
+        println!(
+            "Event buffer BEFORE {:#?}",
+            event_buffer_mut
+                .iter()
+                .map(|e| (e.bar_pos, e.is_note_on_off()))
+                .collect::<Vec<(u32, bool)>>()
+        );
+
+        let mut buff_idx = 0;
+        for e in events {
+            while buff_idx < event_buffer_mut.len() {
+                if event_buffer_mut[buff_idx].bar_pos < e.bar_pos {
+                    buff_idx += 1;
                 }
             }
+            event_buffer_mut.insert(buff_idx, e.clone());
+            buff_idx += 1;
         }
+
+        println!(
+            "Event buffer AFTER {:#?}",
+            event_buffer_mut
+                .iter()
+                .map(|e| (e.bar_pos, e.is_note_on_off()))
+                .collect::<Vec<(u32, bool)>>()
+        );
     }
 
     pub fn add_base_seq(&self, base_seq_params: BaseSeqParams, root_note: Note, note_len: u32) {
@@ -136,7 +163,10 @@ impl Sequencer {
             BaseSeqParams::Euclid(_) => gen_euclid_midi_vec(&seq_params, base_seq),
         };
         self.insert_events(regen);
+        self.sync_event_head();
+    }
 
+    fn sync_event_head(&self) {
         // Reset event_head to next idx right after the current jack window
         let event_buff = self.event_buffer.read();
         match event_buff
@@ -145,6 +175,7 @@ impl Sequencer {
             }) {
             Ok(idx) | Err(idx) => *self.event_head.write() = min(idx, event_buff.len() - 1),
         }
+        println!("Event head synced!")
     }
 
     pub fn set_nb_events(&self, base_seq_id: u32, target_nb_events: u32) -> anyhow::Result<()> {
@@ -166,19 +197,20 @@ impl Sequencer {
     pub fn change_note_len(&self, base_seq_id: u32, target_note_len: u32) -> anyhow::Result<()> {
         let loop_len = self.params.read().loop_length;
         let mut base_seq_mut = self.get_base_seq_mut(base_seq_id)?;
+
         for event in self.event_buffer.write().iter_mut() {
-            if event.id == base_seq_id {
-                if let EventType::MidiNote(MidiNote { on_off, .. }) = event.e_type {
-                    if !on_off {
-                        event.bar_pos = (event.bar_pos as i32 + target_note_len as i32
-                            - base_seq_mut.note_len as i32)
-                            as u32;
-                        event.bar_pos %= loop_len;
-                    }
+            if let EventType::MidiNote(MidiNote { on_off, .. }) = event.e_type {
+                if event.id == base_seq_id && !on_off {
+                    event.bar_pos = (event.bar_pos as i32 + target_note_len as i32
+                        - base_seq_mut.note_len as i32) as u32;
+                    event.bar_pos %= loop_len;
                 }
             }
         }
         base_seq_mut.note_len = target_note_len;
+
+        self.event_buffer.write().sort_by_key(|e| e.bar_pos);
+        self.sync_event_head();
         Ok(())
     }
 
