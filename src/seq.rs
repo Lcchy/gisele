@@ -21,7 +21,7 @@ pub struct Event {
 }
 
 impl Event {
-    fn is_note_on_off(&self) -> bool {
+    fn _is_note_on_off(&self) -> bool {
         match self.e_type {
             EventType::MidiNote(n) => n.on_off,
             EventType::_Fill => unimplemented!(),
@@ -69,42 +69,21 @@ impl Sequencer {
         }
     }
 
-    ///The events need to be sorted by their time position
+    /// The input events need to be sorted by bar_pos
     pub fn insert_events(&self, events: Vec<Event>) {
-        println!(
-            "Notes to insert {:#?}",
-            events
-                .iter()
-                .map(|e| (e.bar_pos, e.is_note_on_off()))
-                .collect::<Vec<(u32, bool)>>()
-        );
         let mut event_buffer_mut = self.event_buffer.write();
-        println!(
-            "Event buffer BEFORE {:#?}",
-            event_buffer_mut
-                .iter()
-                .map(|e| (e.bar_pos, e.is_note_on_off()))
-                .collect::<Vec<(u32, bool)>>()
-        );
-
         let mut buff_idx = 0;
         for e in events {
             while buff_idx < event_buffer_mut.len() {
                 if event_buffer_mut[buff_idx].bar_pos < e.bar_pos {
                     buff_idx += 1;
+                } else {
+                    break;
                 }
             }
             event_buffer_mut.insert(buff_idx, e.clone());
             buff_idx += 1;
         }
-
-        println!(
-            "Event buffer AFTER {:#?}",
-            event_buffer_mut
-                .iter()
-                .map(|e| (e.bar_pos, e.is_note_on_off()))
-                .collect::<Vec<(u32, bool)>>()
-        );
     }
 
     pub fn add_base_seq(&self, base_seq_params: BaseSeqParams, root_note: Note, note_len: u32) {
@@ -123,6 +102,7 @@ impl Sequencer {
             Euclid(_) => gen_euclid_midi_vec(&seq_params, &base_seq),
         };
         self.insert_events(events);
+        self.sync_event_head();
         self.base_seqs.write().push(base_seq);
     }
 

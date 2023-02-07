@@ -43,6 +43,7 @@ Additionally: choose the correct parameters for live user input.
 ### TODO:
 
 - Fix empty doesnt turn notes off: set to stop, wait, delete notes
+- Fix: Set loop len to 1, then to 16, we get a silent loop
 
 - Use 2 event bufffers: note on and not off? Does it comply with LFO vars Events for example? Would make Pause/Stop and regen_base_seq event_head asjustment easier (+ set note len wouldnt need a sort) -> Do it only in conjunction with a refactor of the buffer logic
 - use frames for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames - inspi(see also links): https://github.com/free-creations/a2jmidi
