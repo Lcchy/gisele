@@ -3,6 +3,7 @@ use num_traits::FromPrimitive;
 use rosc::OscMessage;
 use std::{io::ErrorKind, net::UdpSocket, sync::Arc};
 
+use crate::seq::BaseSeqType::{Euclid, Random};
 use crate::{
     midi::midi_pitch_to_note,
     seq::{
@@ -53,18 +54,38 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/add_random_base" => {
             let root_note = parse_to_int(osc_msg, 0)? as u8;
-            let note_len = parse_to_int(osc_msg, 1)? as u32;
-            let nb_events = parse_to_int(osc_msg, 2)? as u32;
-            let base_seq_params = BaseSeqParams::Random(RandomBase { nb_events });
-            seq.add_base_seq(base_seq_params, midi_pitch_to_note(root_note), note_len);
+            let nb_events = parse_to_int(osc_msg, 1)? as u32;
+            let note_len_avg = parse_to_int(osc_msg, 2)? as u32;
+            let note_len_div = parse_to_float(osc_msg, 3)?;
+            let velocity_avg = parse_to_int(osc_msg, 4)? as u8;
+            let velocity_div = parse_to_float(osc_msg, 5)?;
+            let base_seq_params = BaseSeqParams {
+                ty: Random(RandomBase { nb_events }),
+                root_note: midi_pitch_to_note(root_note),
+                note_len_avg,
+                note_len_div,
+                velocity_avg,
+                velocity_div,
+            };
+            seq.add_base_seq(base_seq_params)?;
         }
         "/gisele/add_euclid_base" => {
             let root_note = parse_to_int(osc_msg, 0)? as u8;
-            let note_len = parse_to_int(osc_msg, 1)? as u32;
-            let pulses = parse_to_int(osc_msg, 2)? as u32;
-            let steps = parse_to_int(osc_msg, 3)? as u32;
-            let base_seq_params = BaseSeqParams::Euclid(EuclidBase { pulses, steps });
-            seq.add_base_seq(base_seq_params, midi_pitch_to_note(root_note), note_len);
+            let pulses = parse_to_int(osc_msg, 1)? as u32;
+            let steps = parse_to_int(osc_msg, 2)? as u32;
+            let note_len_avg = parse_to_int(osc_msg, 3)? as u32;
+            let note_len_div = parse_to_float(osc_msg, 4)?;
+            let velocity_avg = parse_to_int(osc_msg, 5)? as u8;
+            let velocity_div = parse_to_float(osc_msg, 6)?;
+            let base_seq_params = BaseSeqParams {
+                ty: Euclid(EuclidBase { pulses, steps }),
+                root_note: midi_pitch_to_note(root_note),
+                note_len_avg,
+                note_len_div,
+                velocity_avg,
+                velocity_div,
+            };
+            seq.add_base_seq(base_seq_params)?;
         }
         "/gisele/random_base/set_nb_events" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
@@ -96,10 +117,10 @@ pub fn osc_process_closure(
                         };
                     match packet {
                         rosc::OscPacket::Message(msg) => {
-                            println!("Received osc msg {:?}", msg);
+                            println!("Received osc msg {msg:?}");
                             let r = osc_handling(&msg, &seq);
                             if let Err(e) = r {
-                                println!("OSC message handling failed with: {:?}", e);
+                                println!("OSC message handling failed with: {e:?}");
                             }
                         }
                         rosc::OscPacket::Bundle(_) => unimplemented!(),
@@ -108,7 +129,7 @@ pub fn osc_process_closure(
                 Err(e) => {
                     // Letting timeout errs pass silently
                     if e.kind() != ErrorKind::WouldBlock {
-                        eprintln!("recv function failed: {:?}", e);
+                        eprintln!("recv function failed: {e:?}");
                     }
                 }
             }
@@ -119,8 +140,21 @@ pub fn osc_process_closure(
 }
 
 fn parse_to_int(osc_msg: &OscMessage, arg_idx: usize) -> anyhow::Result<i32> {
-    osc_msg.args[arg_idx]
+    osc_msg
+        .args
+        .get(arg_idx)
+        .ok_or_else(|| anyhow::format_err!("OSC arg nb {} is missing.", arg_idx))?
         .to_owned()
         .int()
+        .ok_or_else(|| anyhow::format_err!("OSC arg nb {} was not recognized.", arg_idx))
+}
+
+fn parse_to_float(osc_msg: &OscMessage, arg_idx: usize) -> anyhow::Result<f32> {
+    osc_msg
+        .args
+        .get(arg_idx)
+        .ok_or_else(|| anyhow::format_err!("OSC arg nb {} is missing.", arg_idx))?
+        .to_owned()
+        .float()
         .ok_or_else(|| anyhow::format_err!("OSC arg nb {} was not recognized.", arg_idx))
 }

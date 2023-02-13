@@ -131,7 +131,7 @@ fn main() -> Result<()> {
     let active_client = jclient.activate_async((), process).unwrap();
 
     // Start the OSC listening thread
-    let udp_socket = UdpSocket::bind(format!("127.0.0.1:{}", OSC_PORT))?;
+    let udp_socket = UdpSocket::bind(format!("127.0.0.1:{OSC_PORT}"))?;
     // Setting the UDP recv timeout to 1s to allow for gracefull shutdown
     udp_socket.set_read_timeout(Some(Duration::from_secs(1)))?;
     let osc_process = osc_process_closure(udp_socket, seq_arc.clone());

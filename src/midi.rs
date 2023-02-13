@@ -1,4 +1,5 @@
 use rand::Rng;
+use rand_distr::{Distribution, Normal};
 use rust_music_theory::{
     note::{Note, Notes, PitchClass},
     scale::{Direction, Mode, Scale, ScaleType},
@@ -6,8 +7,8 @@ use rust_music_theory::{
 
 use crate::{
     seq::{
-        BaseSeq,
-        BaseSeqParams::{Euclid, Random},
+        BaseSeq, BaseSeqParams,
+        BaseSeqType::{Euclid, Random},
         EuclidBase, Event, RandomBase, SeqParams,
     },
     EventType,
@@ -48,10 +49,16 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
     let mut events_buffer = vec![];
 
     if let BaseSeq {
-        ty: Random(RandomBase { nb_events }),
         id,
-        root_note,
-        note_len,
+        params:
+            BaseSeqParams {
+                ty: Random(RandomBase { nb_events }),
+                root_note,
+                note_len_avg,
+                note_len_div,
+                velocity_avg,
+                velocity_div,
+            },
     } = rand_seq
     {
         // Harmonic quantization
@@ -64,11 +71,14 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
         )
         .unwrap();
         let scale_notes = scale.notes();
+        let velocity_distr = Normal::new(*velocity_avg as f32, *velocity_div).unwrap();
+        let note_len_distr = Normal::new(*note_len_avg as f32, *note_len_div).unwrap();
 
         let mut step_offset = 0;
         for _ in 0..*nb_events {
-            let velocity = rng.gen_range(0..127);
             let pitch = rng.gen_range(0..scale_notes.len());
+            let velocity = velocity_distr.sample(&mut rng) as u8;
+            let note_len = note_len_distr.sample(&mut rng) as u32;
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
@@ -87,7 +97,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
                     velocity,
                     on_off: false,
                 }),
-                bar_pos: (step_offset + *note_len as u32) % seq_params.loop_length,
+                bar_pos: (step_offset + note_len) % seq_params.loop_length,
                 id: *id,
             };
 
@@ -104,7 +114,10 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
     events_buffer
 }
 
-fn gen_euclid(pulses: u32, steps: u32) -> Vec<u8> {
+fn gen_euclid(pulses: u32, steps: u32) -> anyhow::Result<Vec<u8>> {
+    if steps < pulses {
+        anyhow::bail!("Steps should be less than pulses.")
+    }
     let head = vec![vec![1u8]; pulses as usize];
     let tail = vec![vec![0u8]; (steps - pulses) as usize];
 
@@ -127,28 +140,40 @@ fn gen_euclid(pulses: u32, steps: u32) -> Vec<u8> {
         gen_euclid_rec(new_head, tail)
     }
 
-    gen_euclid_rec(head, tail)
+    Ok(gen_euclid_rec(head, tail))
 }
 
-pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<Event> {
+pub fn gen_euclid_midi_vec(
+    seq_params: &SeqParams,
+    euclid_seq: &BaseSeq,
+) -> anyhow::Result<Vec<Event>> {
     let mut events_buffer = vec![];
 
     if let BaseSeq {
-        ty: Euclid(EuclidBase { pulses, steps }),
         id,
-        root_note,
-        note_len,
+        params:
+            BaseSeqParams {
+                ty: Euclid(EuclidBase { pulses, steps }),
+                root_note,
+                note_len_avg,
+                note_len_div,
+                velocity_avg,
+                velocity_div,
+            },
     } = euclid_seq
     {
         if seq_params.loop_length % *steps != 0 {
             eprintln!("Could not generate euclidean rhythm for indivisible loop-length.");
-            return events_buffer;
+            return Ok(events_buffer);
         }
 
-        let euclid_step_len_bar = seq_params.loop_length / *steps;
-        let euclid_rhythm = gen_euclid(*pulses, *steps);
+        let mut rng = rand::thread_rng();
+        let velocity_distr = Normal::new(*velocity_avg as f32, *velocity_div).unwrap();
+        let note_len_distr = Normal::new(*note_len_avg as f32, *note_len_div).unwrap();
 
-        let velocity = 127;
+        let euclid_step_len_bar = seq_params.loop_length / *steps;
+        let euclid_rhythm = gen_euclid(*pulses, *steps)?;
+
         let pitch = note_to_midi_pitch(root_note);
 
         let mut time_offset = 0;
@@ -156,6 +181,9 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
             if i == 0 {
                 continue;
             }
+
+            let velocity = velocity_distr.sample(&mut rng) as u8;
+            let note_len = note_len_distr.sample(&mut rng) as u32;
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
@@ -174,7 +202,7 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
                     velocity,
                     on_off: false,
                 }),
-                bar_pos: (time_offset + *note_len) % seq_params.loop_length,
+                bar_pos: (time_offset + note_len) % seq_params.loop_length,
                 id: *id,
             };
             events_buffer.push(event_midi_on);
@@ -184,18 +212,21 @@ pub fn gen_euclid_midi_vec(seq_params: &SeqParams, euclid_seq: &BaseSeq) -> Vec<
     } else {
         eprintln!("Could not insert BaseSeq as its not Euclidean.")
     }
-    events_buffer
+    Ok(events_buffer)
 }
 
 #[test]
 fn test_euclid() {
-    assert_eq!(gen_euclid(1, 2), vec![1, 0]);
-    assert_eq!(gen_euclid(1, 3), vec![1, 0, 0]);
-    assert_eq!(gen_euclid(1, 4), vec![1, 0, 0, 0,]);
-    assert_eq!(gen_euclid(4, 12), vec![1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,]);
-    assert_eq!(gen_euclid(2, 3), vec![1, 0, 1]);
-    assert_eq!(gen_euclid(2, 5), vec![1, 0, 1, 0, 0]);
-    assert_eq!(gen_euclid(3, 4), vec![1, 0, 1, 1]);
+    assert_eq!(gen_euclid(1, 2).unwrap(), vec![1, 0]);
+    assert_eq!(gen_euclid(1, 3).unwrap(), vec![1, 0, 0]);
+    assert_eq!(gen_euclid(1, 4).unwrap(), vec![1, 0, 0, 0,]);
+    assert_eq!(
+        gen_euclid(4, 12).unwrap(),
+        vec![1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,]
+    );
+    assert_eq!(gen_euclid(2, 3).unwrap(), vec![1, 0, 1]);
+    assert_eq!(gen_euclid(2, 5).unwrap(), vec![1, 0, 1, 0, 0]);
+    assert_eq!(gen_euclid(3, 4).unwrap(), vec![1, 0, 1, 1]);
 }
 
 #[test]

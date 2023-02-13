@@ -9,7 +9,7 @@ use std::sync::Arc;
 use strum::EnumString;
 
 use crate::midi::{gen_euclid_midi_vec, gen_rand_midi_vec, note_to_midi_pitch, MidiNote};
-use crate::seq::BaseSeqParams::{Euclid, Random};
+use crate::seq::BaseSeqType::{Euclid, Random};
 
 #[derive(Debug, Clone)]
 pub struct Event {
@@ -86,24 +86,23 @@ impl Sequencer {
         }
     }
 
-    pub fn add_base_seq(&self, base_seq_params: BaseSeqParams, root_note: Note, note_len: u32) {
+    pub fn add_base_seq(&self, base_seq_params: BaseSeqParams) -> anyhow::Result<()> {
         let mut seq_params = self.params.write();
         let base_seq = BaseSeq {
-            ty: base_seq_params,
+            params: base_seq_params,
             id: seq_params.base_seq_incr,
-            root_note,
-            note_len,
         };
         println!("Inserted base sequence id {}", seq_params.base_seq_incr);
         seq_params.base_seq_incr += 1;
         //Insert events
-        let events = match base_seq_params {
+        let events = match base_seq.params.ty {
             Random(_) => gen_rand_midi_vec(&seq_params, &base_seq),
-            Euclid(_) => gen_euclid_midi_vec(&seq_params, &base_seq),
+            Euclid(_) => gen_euclid_midi_vec(&seq_params, &base_seq)?,
         };
         self.insert_events(events);
         self.sync_event_head();
         self.base_seqs.write().push(base_seq);
+        Ok(())
     }
 
     /// BaseSeq getter, mapping the lock contents in order to preserve the lifetime
@@ -131,19 +130,20 @@ impl Sequencer {
 
     pub fn regen_base_seq(&self, base_seq_id: u32) -> anyhow::Result<()> {
         let base_seq = self.get_base_seq(base_seq_id)?;
-        self._regen_base_seq(&base_seq);
+        self._regen_base_seq(&base_seq)?;
         Ok(())
     }
 
-    fn _regen_base_seq(&self, base_seq: &BaseSeq) {
+    fn _regen_base_seq(&self, base_seq: &BaseSeq) -> anyhow::Result<()> {
         self.rm_base_seq_events(base_seq.id);
         let seq_params = self.params.read();
-        let regen = match base_seq.ty {
-            BaseSeqParams::Random(_) => gen_rand_midi_vec(&seq_params, base_seq),
-            BaseSeqParams::Euclid(_) => gen_euclid_midi_vec(&seq_params, base_seq),
+        let regen = match base_seq.params.ty {
+            BaseSeqType::Random(_) => gen_rand_midi_vec(&seq_params, base_seq),
+            BaseSeqType::Euclid(_) => gen_euclid_midi_vec(&seq_params, base_seq)?,
         };
         self.insert_events(regen);
         self.sync_event_head();
+        Ok(())
     }
 
     fn sync_event_head(&self) {
@@ -170,7 +170,7 @@ impl Sequencer {
             new_head = 0;
         }
 
-        *self.event_head.write() = min(new_head, event_buff.len() - 1);
+        *self.event_head.write() = min(new_head, event_buff.len().saturating_sub(1));
 
         println!("Event head synced!")
     }
@@ -179,7 +179,11 @@ impl Sequencer {
         println!("Regenerating base sequence..");
         let mut base_seq_mut = self.get_base_seq_mut(base_seq_id)?;
         if let BaseSeq {
-            ty: Random(RandomBase { ref mut nb_events }),
+            params:
+                BaseSeqParams {
+                    ty: Random(RandomBase { ref mut nb_events }),
+                    ..
+                },
             ..
         } = *base_seq_mut
         {
@@ -187,7 +191,7 @@ impl Sequencer {
         } else {
             bail!("The given base_seq_id is wrong.");
         };
-        self._regen_base_seq(&base_seq_mut);
+        self._regen_base_seq(&base_seq_mut)?;
         Ok(())
     }
 
@@ -199,12 +203,13 @@ impl Sequencer {
             if let EventType::MidiNote(MidiNote { on_off, .. }) = event.e_type {
                 if event.id == base_seq_id && !on_off {
                     event.bar_pos = (event.bar_pos as i32 + target_note_len as i32
-                        - base_seq_mut.note_len as i32) as u32;
+                        - base_seq_mut.params.note_len_avg as i32)
+                        as u32;
                     event.bar_pos %= loop_len;
                 }
             }
         }
-        base_seq_mut.note_len = target_note_len;
+        base_seq_mut.params.note_len_avg = target_note_len;
 
         self.event_buffer.write().sort_by_key(|e| e.bar_pos);
         self.sync_event_head();
@@ -213,7 +218,7 @@ impl Sequencer {
 
     pub fn transpose(&self, base_seq_id: u32, target_root_note: Note) -> anyhow::Result<()> {
         let mut base_seq_mut = self.get_base_seq_mut(base_seq_id)?;
-        let root_note_midi = note_to_midi_pitch(&base_seq_mut.root_note);
+        let root_note_midi = note_to_midi_pitch(&base_seq_mut.params.root_note);
         let target_root_note_midi = note_to_midi_pitch(&target_root_note);
         let pitch_diff = target_root_note_midi as i32 - root_note_midi as i32;
         for event in self.event_buffer.write().iter_mut() {
@@ -223,7 +228,7 @@ impl Sequencer {
                 }
             }
         }
-        base_seq_mut.root_note = target_root_note;
+        base_seq_mut.params.root_note = target_root_note;
         Ok(())
     }
 
@@ -269,20 +274,32 @@ pub struct SeqParams {
 //////////////////////////////////////////////////////////////////////////
 /// Base Sequences
 
-#[derive(Clone, Copy, Debug)]
-pub enum BaseSeqParams {
+#[derive(Clone, Debug)]
+pub enum BaseSeqType {
     Random(RandomBase),
     Euclid(EuclidBase),
 }
 
-/// State of a base sequence that is generated and inserted into the EventBuffer
-pub struct BaseSeq {
-    pub ty: BaseSeqParams,
-    /// Identifies events in the EventBuffer
-    pub id: u32,
+#[derive(Clone, Debug)]
+pub struct BaseSeqParams {
+    pub ty: BaseSeqType,
     pub root_note: Note,
     /// In bars
-    pub note_len: u32,
+    pub note_len_avg: u32,
+    /// Standard deviation from average value note_len in normal random generation
+    /// In bars
+    pub note_len_div: f32,
+    /// In midi range (0-127)
+    pub velocity_avg: u8,
+    /// Standard deviation from average value velocity in normal random generation
+    pub velocity_div: f32,
+}
+
+/// State of a base sequence that is generated and inserted into the EventBuffer
+pub struct BaseSeq {
+    pub params: BaseSeqParams,
+    /// Identifies events in the EventBuffer
+    pub id: u32,
 }
 
 #[derive(Clone, Copy, Debug)]

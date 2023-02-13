@@ -11,7 +11,7 @@ WIP A generative midi sequencer running on Jack, controlled via OSC.
 A Sequencer Line:
 
 ```
-Fixed base seqs (euclidian, minimalism, dub, random, counterpoint, etc..)
+Fixed base sequence (euclidian, minimalism, random, counterpoint, etc..)
 
 -(into)-> Seq Fx (harmonic inversion, pitschift, retrigs, etc...)
 
@@ -31,36 +31,33 @@ These sequencer lines work in parallel.
 
 (Model 1 could control groups of model 2 structures.)
 
-Additionally: choose the correct parameters for live user input.
+Additionally: choose the correct parameter spaces for live user input.
 
 ---
 
 ### Intermediate Goals:
 
-- Percussion slicer with Blackbox: use euclid
+- Percussion slicer with Blackbox: use euclids
 - Minimalism
 
 ### TODO:
 
 - Fix empty doesnt turn notes off: set to stop, wait, delete notes
-- Fix: Set loop len to 1, then to 16, we get a silent loop
+- Fix: Set loop len to 1, then to 16, gives a silent loop
+- Have a stream of events consumed in the jack process, filled by an external thread for random deviation generation, based on base sequence (could be used for e.g. euclidian rhythm, as loop_len could be factored into each BaseSeq). Use a dynamic stream height depending on bpm, flush on param change
 
-- Use 2 event bufffers: note on and not off? Does it comply with LFO vars Events for example? Would make Pause/Stop and regen_base_seq event_head asjustment easier (+ set note len wouldnt need a sort) -> Do it only in conjunction with a refactor of the buffer logic
 - use frames for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames - inspi(see also links): https://github.com/free-creations/a2jmidi
-- If osc processing is too slow, spawn a thread per received msg, or use thread pools
+- Use 2 event bufffers: note on and not off? Does it comply with LFO vars Events for example? Would make Pause/Stop and regen_base_seq event_head asjustment easier (+ set note len wouldnt need a sort) -> Do it only in conjunction with a refactor of the buffer logic
+- If osc-in processing is too slow, spawn a thread per received msg, or use thread pools
 - factorize main jack event loop into structs for clarity, see it as a sliding window with a semi-synced peek. This is the only way we maintain low complexity
-- If perf is bad: have a stream of events consumed in the jack process, filled by external threads for random deviation generation, based on base sequence. Use a dynamic stream height, flush when reseeding or so
-- LATER: have a central sequencer process that pushes out events to jack midi or osc sender
-- Clean up unwraps
+- For OSC-out use a thread-pool of osc_senders channels to which we offload from the jack_process.
+- Clean up unwraps and [idx]
 - Optimize sync_event_head: set to event in curr jack window if we know the cycle to be just about to play | Ambitious and secondary
 
 ### Steps:
 
-- Test/debug all new osc endpoints
 - Test euclid gen midi with constant note
-- Add param to base_seqs gen with gaussian distrib:
-  - note_len
-  - velocity
+- Add remove_base_seq
 - Add random deviations (deviation cells) from BaseSeq: add gen_rand_note() in jack_process
 - Improve set_nb_events: seq should be identical when coming back to init_nb
 - Introduce cells: randomness functions that can be used for deviation or base, harm or rhythm:

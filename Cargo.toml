@@ -16,3 +16,4 @@ rust-music-theory = "0.2"
 strum = { version = "0.24.1", features = ["derive"] }
 num-derive = "0.3.3"
 num-traits = "0.2.15"
+rand_distr = "0.4.3"
