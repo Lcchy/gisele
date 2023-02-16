@@ -44,7 +44,7 @@ Additionally: choose the correct parameter spaces for live user input.
 
 - Fix empty doesnt turn notes off: set to stop, wait, delete notes
 - Fix: Set loop len to 1, then to 16, gives a silent loop
-- Have a stream of events consumed in the jack process, filled by an external thread for random deviation generation, based on base sequence (could be used for e.g. euclidian rhythm, as loop_len could be factored into each BaseSeq). Use a dynamic stream height depending on bpm, flush on param change
+- Have a stream of events consumed in the jack process, filled by an external thread for random deviation generation, based on base sequence (could be used for e.g. euclidian rhythm, as loop_len could be factored into each BaseSeq). Use a dynamic stream height depending on bpm, flush on param change. Or use a crossbeam::SeqQueue?
 
 - use frames for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames - inspi(see also links): https://github.com/free-creations/a2jmidi
 - Use 2 event bufffers: note on and not off? Does it comply with LFO vars Events for example? Would make Pause/Stop and regen_base_seq event_head asjustment easier (+ set note len wouldnt need a sort) -> Do it only in conjunction with a refactor of the buffer logic
@@ -72,6 +72,7 @@ Additionally: choose the correct parameter spaces for live user input.
 
 - Make params sequencable
 - Add harmonic coherent transpose + inversions
+- Make smooth BaseSeq transitions possible, using rand walks e.g.
 - Add midi in for randomization seeding
 - Add midi rec for base seq
 - Add manual loop shortening

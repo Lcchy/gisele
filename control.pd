@@ -1,8 +1,7 @@
 #N canvas -10 32 1920 2079 12;
-#X obj 729 208 netsend -u -b;
-#X msg 733 59 connect 192.168.0.20 34254;
-#X msg 720 33 connect 127.0.0.1 34254;
-#X msg 747 85 connect 10.244.1.228 34254;
+#X obj 713 256 netsend -u -b;
+#X msg 712 34 connect 127.0.0.1 34254;
+#X msg 739 86 connect 10.244.1.228 34254;
 #N canvas 387 832 1020 789 sub 0;
 #X obj 116 117 vradio 20 1 0 3 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0;
@@ -15,7 +14,7 @@
 #X connect 4 0 5 0;
 #X coords 0 -1 2 2 100 90 2 100 100;
 #X restore 71 29 pd sub;
-#X obj 777 154 r osc_sender;
+#X obj 769 155 r osc_sender;
 #N canvas 2092 519 1020 794 set_note_len 0;
 #X obj 51 287 s osc_sender;
 #X obj 51 257 oscformat -f ii /gisele/set_note_len;
@@ -286,7 +285,14 @@
 #X connect 17 0 9 0;
 #X coords 0 -1 1 1 280 160 2 100 100;
 #X restore 397 478 pd add_random_base;
+#X msg 725 60 connect 192.168.0.239 34254;
+#X msg 753 116 disconnect;
+#X obj 769 179 list prepend send;
+#X obj 769 203 list trim;
 #X connect 1 0 0 0;
 #X connect 2 0 0 0;
-#X connect 3 0 0 0;
-#X connect 5 0 0 0;
+#X connect 4 0 16 0;
+#X connect 14 0 0 0;
+#X connect 15 0 0 0;
+#X connect 16 0 17 0;
+#X connect 17 0 0 0;

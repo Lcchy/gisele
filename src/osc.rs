@@ -112,7 +112,7 @@ pub fn osc_process_closure(
                         if let Ok(v) = rosc::decoder::decode_udp(&rec_buffer[..received]) {
                             v
                         } else {
-                            println!("OSC message could not be decoded.");
+                            eprintln!("OSC message could not be decoded.");
                             continue;
                         };
                     match packet {
@@ -120,7 +120,7 @@ pub fn osc_process_closure(
                             println!("Received osc msg {msg:?}");
                             let r = osc_handling(&msg, &seq);
                             if let Err(e) = r {
-                                println!("OSC message handling failed with: {e:?}");
+                                eprintln!("OSC message handling failed with: {e:?}");
                             }
                         }
                         rosc::OscPacket::Bundle(_) => unimplemented!(),
