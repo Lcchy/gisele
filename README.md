@@ -5,6 +5,11 @@ WIP A generative midi sequencer running on Jack, controlled via OSC.
 - Install `pipewire-jack-audio-connection-kit-devel` as a dep for building
 - Use `helvum` flatpak to route midi in pipewire
 - Use `Qsynth` for sound testing (pd midi not working with pw)
+- Use tmux for live debuging:
+  - Split panes: left-right: ctrl+b + % OR top-bottom: ctrl+b + "
+  - focus: ctrl+b + arrow
+  - `$ tty`, copy your error pane's device file
+  - `$ cargo run 2>/dev/pts/N`
 
 ### General Structure:
 
