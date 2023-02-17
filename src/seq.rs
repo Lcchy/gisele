@@ -293,6 +293,7 @@ pub struct BaseSeqParams {
     pub velocity_avg: u8,
     /// Standard deviation from average value velocity in normal random generation
     pub velocity_div: f32,
+    pub midi_ch: u8,
 }
 
 /// State of a base sequence that is generated and inserted into the EventBuffer

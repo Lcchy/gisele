@@ -59,6 +59,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             let note_len_div = parse_to_float(osc_msg, 3)?;
             let velocity_avg = parse_to_int(osc_msg, 4)? as u8;
             let velocity_div = parse_to_float(osc_msg, 5)?;
+            let midi_ch = parse_to_int(osc_msg, 6)? as u8;
             let base_seq_params = BaseSeqParams {
                 ty: Random(RandomBase { nb_events }),
                 root_note: midi_pitch_to_note(root_note),
@@ -66,6 +67,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 note_len_div,
                 velocity_avg,
                 velocity_div,
+                midi_ch,
             };
             seq.add_base_seq(base_seq_params)?;
         }
@@ -77,6 +79,8 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             let note_len_div = parse_to_float(osc_msg, 4)?;
             let velocity_avg = parse_to_int(osc_msg, 5)? as u8;
             let velocity_div = parse_to_float(osc_msg, 6)?;
+            let midi_ch = parse_to_int(osc_msg, 7)? as u8;
+
             let base_seq_params = BaseSeqParams {
                 ty: Euclid(EuclidBase { pulses, steps }),
                 root_note: midi_pitch_to_note(root_note),
@@ -84,6 +88,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
                 note_len_div,
                 velocity_avg,
                 velocity_div,
+                midi_ch,
             };
             seq.add_base_seq(base_seq_params)?;
         }

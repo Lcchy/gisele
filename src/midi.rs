@@ -58,6 +58,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
                 note_len_div,
                 velocity_avg,
                 velocity_div,
+                midi_ch,
             },
     } = rand_seq
     {
@@ -82,7 +83,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
-                    channel: 1,
+                    channel: *midi_ch,
                     pitch: note_to_midi_pitch(&scale_notes[pitch]),
                     velocity,
                     on_off: true,
@@ -92,7 +93,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
             };
             let event_midi_off = Event {
                 e_type: EventType::MidiNote(MidiNote {
-                    channel: 1,
+                    channel: *midi_ch,
                     pitch: note_to_midi_pitch(&scale_notes[pitch]),
                     velocity,
                     on_off: false,
@@ -159,6 +160,7 @@ pub fn gen_euclid_midi_vec(
                 note_len_div,
                 velocity_avg,
                 velocity_div,
+                midi_ch,
             },
     } = euclid_seq
     {
@@ -187,7 +189,7 @@ pub fn gen_euclid_midi_vec(
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
-                    channel: 1,
+                    channel: *midi_ch,
                     pitch,
                     velocity,
                     on_off: true,
@@ -197,7 +199,7 @@ pub fn gen_euclid_midi_vec(
             };
             let event_midi_off = Event {
                 e_type: EventType::MidiNote(MidiNote {
-                    channel: 1,
+                    channel: *midi_ch,
                     pitch,
                     velocity,
                     on_off: false,

@@ -61,10 +61,12 @@ Additionally: choose the correct parameter spaces for live user input.
 
 ### Steps:
 
-- Test euclid gen midi with constant note
-- Add remove_base_seq
+- Set init vals in control.pd, make it more usable (see add_base_seq)
+- Test euclid gen midi with constant note: make it work with general loop_len first, awaits major refactor
 - Add random deviations (deviation cells) from BaseSeq: add gen_rand_note() in jack_process
+- SLICER
 - Improve set_nb_events: seq should be identical when coming back to init_nb
+- Add remove_base_seq
 - Introduce cells: randomness functions that can be used for deviation or base, harm or rhythm:
 
   - Overlapping/non-overlapping events (on same channel or not)
