@@ -18,7 +18,7 @@ use crate::{
 #[derive(Debug, Copy, Clone)]
 pub struct MidiNote {
     pub on_off: bool,
-    /// Channel, should be 0-15
+    /// Channel, should be 1-16
     pub channel: u8,
     pub pitch: u8,
     pub velocity: u8,
@@ -27,7 +27,7 @@ pub struct MidiNote {
 impl MidiNote {
     pub fn get_raw_note_on_bytes(&self) -> [u8; 3] {
         [
-            (8 + self.on_off as u8) * 16 + self.channel,
+            (8 + self.on_off as u8) * 16 + (self.channel - 1),
             self.pitch,
             self.velocity,
         ]

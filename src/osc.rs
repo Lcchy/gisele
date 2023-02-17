@@ -59,7 +59,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             let note_len_div = parse_to_float(osc_msg, 3)?;
             let velocity_avg = parse_to_int(osc_msg, 4)? as u8;
             let velocity_div = parse_to_float(osc_msg, 5)?;
-            let midi_ch = parse_to_int(osc_msg, 6)? as u8;
+            let midi_ch = parse_to_midi_ch(osc_msg, 6)?;
             let base_seq_params = BaseSeqParams {
                 ty: Random(RandomBase { nb_events }),
                 root_note: midi_pitch_to_note(root_note)?,
@@ -79,7 +79,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             let note_len_div = parse_to_float(osc_msg, 4)?;
             let velocity_avg = parse_to_int(osc_msg, 5)? as u8;
             let velocity_div = parse_to_float(osc_msg, 6)?;
-            let midi_ch = parse_to_int(osc_msg, 7)? as u8;
+            let midi_ch = parse_to_midi_ch(osc_msg, 7)?;
 
             let base_seq_params = BaseSeqParams {
                 ty: Euclid(EuclidBase { pulses, steps }),
@@ -152,6 +152,14 @@ fn parse_to_int(osc_msg: &OscMessage, arg_idx: usize) -> anyhow::Result<i32> {
         .to_owned()
         .int()
         .ok_or_else(|| anyhow::format_err!("OSC arg nb {} was not recognized.", arg_idx))
+}
+
+fn parse_to_midi_ch(osc_msg: &OscMessage, arg_idx: usize) -> anyhow::Result<u8> {
+    let midi_ch = parse_to_int(osc_msg, arg_idx)? as u8;
+    if !(1..17).contains(&midi_ch) {
+        bail!("Midi channel should be between 1 to 16");
+    }
+    Ok(midi_ch)
 }
 
 fn parse_to_float(osc_msg: &OscMessage, arg_idx: usize) -> anyhow::Result<f32> {

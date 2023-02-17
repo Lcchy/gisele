@@ -293,6 +293,7 @@ pub struct BaseSeqParams {
     pub velocity_avg: u8,
     /// Standard deviation from average value velocity in normal random generation
     pub velocity_div: f32,
+    /// Channel, should be 1-16
     pub midi_ch: u8,
 }
 

@@ -38,7 +38,7 @@
 #X obj 117 182 oscformat -f i /gisele/set_bpm;
 #X obj 117 206 s osc_sender;
 #X obj 117 134 nbx 5 14 1 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 505 256;
+#000000 #000000 426 256;
 #X text 127 106 BPM;
 #X connect 0 0 1 0;
 #X connect 2 0 0 0;
@@ -138,7 +138,7 @@
 #X text 122 109 Root;
 #X text 299 131 Midi note;
 #X obj 309 156 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 33 256;
+#000000 #000000 48 256;
 #X connect 0 0 11 0;
 #X connect 1 0 9 0;
 #X connect 4 0 8 0;
@@ -222,8 +222,8 @@
 #X obj 121 146 nbx 5 14 12 127 0 0 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0 256;
 #X text 188 143 Root Note;
-#X obj 122 172 nbx 5 14 0 1e+37 0 0 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 0 256;
+#X obj 122 172 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#000000 #000000 14 256;
 #X text 188 169 Nb events;
 #X text 117 104 Add rand base;
 #X obj 320 516 s osc_sender;
@@ -237,7 +237,7 @@
 #X obj 290 382 t b f;
 #X obj 320 492 oscformat -f iiififi /gisele/add_random_base;
 #X obj 40 459 pack f f f f f f f;
-#X obj 307 172 nbx 5 14 0 15 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#X obj 307 172 nbx 5 14 1 16 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 1 256;
 #X text 303 148 Midi Ch;
 #X obj 355 367 t b f;
