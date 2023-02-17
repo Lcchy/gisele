@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use rust_music_theory::{
@@ -37,11 +38,16 @@ pub fn note_to_midi_pitch(note: &Note) -> u8 {
     12 + note.octave * 12 + note.pitch_class.into_u8()
 }
 
-pub fn midi_pitch_to_note(pitch: u8) -> Note {
-    Note {
+pub fn midi_pitch_to_note(pitch: u8) -> anyhow::Result<Note> {
+    // We only allow midi pitch >= 12 because C_0=12 and rust_music_theory
+    // does not allow for negative octaves.
+    let octave = (pitch / 12)
+        .checked_sub(1)
+        .ok_or(anyhow!("Midi pitch must be >= 12"))?;
+    Ok(Note {
         pitch_class: PitchClass::from_u8(pitch),
-        octave: (pitch / 12) - 1,
-    }
+        octave,
+    })
 }
 
 pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Event> {

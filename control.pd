@@ -38,7 +38,7 @@
 #X obj 117 182 oscformat -f i /gisele/set_bpm;
 #X obj 117 206 s osc_sender;
 #X obj 117 134 nbx 5 14 1 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 1164 256;
+#000000 #000000 505 256;
 #X text 127 106 BPM;
 #X connect 0 0 1 0;
 #X connect 2 0 0 0;
@@ -155,7 +155,7 @@
 #X restore 68 324 pd set_root;
 #N canvas 1343 363 1602 1065 set_loop_len 0;
 #X obj 127 164 hradio 25 1 1 8 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 6;
+#000000 #000000 3;
 #X obj 225 287 route 0 1 2 3 4 5 6 7;
 #X obj 255 113 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 33 256;
@@ -209,55 +209,62 @@
 #X coords 0 -1 1 1 250 150 2 100 100;
 #X restore 401 265 pd set_loop_len;
 #N canvas 1549 486 1492 1221 add_random_base 0;
-#X obj 120 213 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#X obj 119 232 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 94 256;
-#X obj 120 185 nbx 5 14 0 100000 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#X obj 119 204 nbx 5 14 0 100000 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 3 256;
-#X obj 309 185 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#X obj 308 204 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 1 256;
-#X text 187 182 Note len avg +-;
-#X text 188 210 Velocity avg +-;
-#X obj 310 212 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#X text 186 201 Note len avg +-;
+#X text 187 229 Velocity avg +-;
+#X obj 309 231 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 14 256;
-#X obj 120 132 nbx 5 14 12 127 0 0 empty empty empty 0 -8 0 10 #fcfcfc
+#X obj 121 146 nbx 5 14 12 127 0 0 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0 256;
-#X text 187 129 Root Note;
-#X obj 121 158 nbx 5 14 0 1e+37 0 0 empty empty empty 0 -8 0 10 #fcfcfc
+#X text 188 143 Root Note;
+#X obj 122 172 nbx 5 14 0 1e+37 0 0 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0 256;
-#X text 187 155 Nb events;
+#X text 188 169 Nb events;
 #X text 117 104 Add rand base;
 #X obj 320 516 s osc_sender;
-#X obj 44 342 pack f f f f f f;
 #X obj 353 114 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
 #X obj 320 463 list store;
-#X obj 320 492 oscformat -f iiifif /gisele/add_random_base;
-#X obj 142 248 t b f;
-#X obj 95 254 t b f;
-#X obj 190 262 t b f;
-#X obj 242 264 t b f;
-#X obj 294 265 t b f;
-#X connect 0 0 18 0;
-#X connect 1 0 17 0;
-#X connect 2 0 19 0;
-#X connect 5 0 20 0;
-#X connect 6 0 12 0;
-#X connect 8 0 16 0;
-#X connect 12 0 14 1;
-#X connect 13 0 14 0;
-#X connect 14 0 15 0;
-#X connect 15 0 11 0;
-#X connect 16 0 12 0;
-#X connect 16 1 12 1;
-#X connect 17 0 12 0;
-#X connect 17 1 12 2;
-#X connect 18 0 12 0;
-#X connect 18 1 12 4;
-#X connect 19 0 12 0;
-#X connect 19 1 12 3;
-#X connect 20 0 12 0;
-#X connect 20 1 12 5;
-#X coords 0 -1 1 1 280 140 2 100 100;
+#X obj 138 365 t b f;
+#X obj 91 371 t b f;
+#X obj 186 379 t b f;
+#X obj 238 381 t b f;
+#X obj 290 382 t b f;
+#X obj 320 492 oscformat -f iiififi /gisele/add_random_base;
+#X obj 40 459 pack f f f f f f f;
+#X obj 307 172 nbx 5 14 0 15 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#000000 #000000 1 256;
+#X text 303 148 Midi Ch;
+#X obj 355 367 t b f;
+#X connect 0 0 16 0;
+#X connect 1 0 15 0;
+#X connect 2 0 17 0;
+#X connect 5 0 18 0;
+#X connect 6 0 20 0;
+#X connect 8 0 14 0;
+#X connect 12 0 13 0;
+#X connect 13 0 19 0;
+#X connect 14 0 20 0;
+#X connect 14 1 20 1;
+#X connect 15 0 20 0;
+#X connect 15 1 20 2;
+#X connect 16 0 20 0;
+#X connect 16 1 20 4;
+#X connect 17 0 20 0;
+#X connect 17 1 20 3;
+#X connect 18 0 20 0;
+#X connect 18 1 20 5;
+#X connect 19 0 11 0;
+#X connect 20 0 13 1;
+#X connect 21 0 23 0;
+#X connect 23 0 20 0;
+#X connect 23 1 20 6;
+#X coords 0 -1 1 1 280 170 2 100 100;
 #X restore 69 453 pd add_random_base;
 #N canvas 218 477 1590 1134 add_random_base 0;
 #X obj 121 237 nbx 5 14 0 127 0 0 empty empty empty 0 -8 0 10 #fcfcfc

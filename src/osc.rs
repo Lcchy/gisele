@@ -40,7 +40,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/set_root" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let target_note = midi_pitch_to_note(parse_to_int(osc_msg, 1)? as u8);
+            let target_note = midi_pitch_to_note(parse_to_int(osc_msg, 1)? as u8)?;
             seq.transpose(base_seq_id, target_note)?;
         }
         "/gisele/set_note_len" => {
@@ -62,7 +62,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             let midi_ch = parse_to_int(osc_msg, 6)? as u8;
             let base_seq_params = BaseSeqParams {
                 ty: Random(RandomBase { nb_events }),
-                root_note: midi_pitch_to_note(root_note),
+                root_note: midi_pitch_to_note(root_note)?,
                 note_len_avg,
                 note_len_div,
                 velocity_avg,
@@ -83,7 +83,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
 
             let base_seq_params = BaseSeqParams {
                 ty: Euclid(EuclidBase { pulses, steps }),
-                root_note: midi_pitch_to_note(root_note),
+                root_note: midi_pitch_to_note(root_note)?,
                 note_len_avg,
                 note_len_div,
                 velocity_avg,
