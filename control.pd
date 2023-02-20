@@ -38,18 +38,18 @@
 #X coords 0 -1 1 1 150 60 2 100 100;
 #X restore 194 29 pd set_note_len;
 #N canvas 1960 377 1602 1065 set_bpm 0;
-#X obj 117 182 oscformat -f i /gisele/set_bpm;
 #X obj 117 206 s osc_sender;
 #X obj 117 134 nbx 5 14 1 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 400 256;
+#000000 #000000 11773 256;
 #X text 127 106 BPM;
-#X connect 0 0 1 0;
-#X connect 2 0 0 0;
+#X obj 117 182 oscformat -f f /gisele/set_bpm;
+#X connect 1 0 3 0;
+#X connect 3 0 0 0;
 #X coords 0 -1 1 1 85 60 2 100 100;
 #X restore 76 148 pd set_bpm;
 #N canvas 2092 519 1020 794 set_loop_len 0;
 #X obj 127 164 hradio 25 1 1 8 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 5;
+#000000 #000000 4;
 #X msg 249 337 16;
 #X msg 139 332 4;
 #X msg 191 334 8;
@@ -140,7 +140,7 @@
 #X text 122 109 Root;
 #X text 299 131 Midi note;
 #X obj 309 156 nbx 5 14 12 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 33 256;
+#000000 #000000 55 256;
 #X obj 179 389 list store;
 #X obj 196 310 t b b f;
 #X obj 130 223 + 1;
@@ -277,9 +277,9 @@
 #X connect 23 1 20 6;
 #X coords 0 -1 1 1 280 170 2 100 100;
 #X restore 69 453 pd add_random_base;
-#N canvas 2097 388 1590 1134 add_random_base 1;
+#N canvas 2097 388 1590 1134 add_random_base 0;
 #X obj 121 237 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 78 256;
+#000000 #000000 127 256;
 #X obj 121 209 nbx 5 14 0 100000 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 2 256;
 #X obj 310 209 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
@@ -289,14 +289,14 @@
 #X obj 311 236 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0 256;
 #X obj 120 132 nbx 5 14 12 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 45 256;
+#000000 #000000 55 256;
 #X text 187 129 Root Note;
 #X obj 121 158 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 16 256;
 #X obj 196 530 s osc_sender;
 #X text 117 104 Add euclid base;
 #X obj 121 183 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 15 256;
+#000000 #000000 16 256;
 #X text 187 155 Pulses;
 #X text 187 180 Steps;
 #X obj 197 474 list store;

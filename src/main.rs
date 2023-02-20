@@ -10,7 +10,7 @@ mod midi;
 mod osc;
 mod seq;
 
-const INIT_BPM: u16 = 120;
+const INIT_BPM: f32 = 120.;
 
 fn main() -> Result<()> {
     // Set up jack ports
@@ -42,8 +42,9 @@ fn main() -> Result<()> {
         let cy_times = ps.cycle_times().unwrap();
 
         // We increment the current jack process time window dynamically to allow for speed playback variations
-        seq_int.j_window_time_end +=
-            ((seq_params.bpm as u64 * (cy_times.next_usecs - cy_times.current_usecs)) as f64) / 6e7;
+        seq_int.j_window_time_end += (seq_params.bpm as f64
+            * (cy_times.next_usecs as f64 - cy_times.current_usecs as f64))
+            / 6e7;
         seq_int.j_window_time_end %= seq_params.loop_length as f64;
 
         let event_head_before = *seq_ref.event_head.read();

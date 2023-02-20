@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 jack = "0.11.3"
 anyhow = "1.0.65"
-rosc = "0.9.0"
+rosc = "0.9.1"
 wav = "1.0.0"
 rand = "0.8.5"
 parking_lot = "0.12.1"

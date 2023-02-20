@@ -29,7 +29,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             println!("Sequencer Status set to {:?}", seq_params_mut.status);
         }
         "/gisele/set_bpm" => {
-            seq.params.write().bpm = parse_to_int(osc_msg, 0)? as u16;
+            seq.params.write().bpm = parse_to_float(osc_msg, 0)?;
         }
         "/gisele/set_loop_length" => {
             seq.params.write().loop_length = parse_to_int(osc_msg, 0)? as u32;
@@ -96,6 +96,14 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
             let nb_events = parse_to_int(osc_msg, 1)? as u32;
             seq.set_nb_events(base_seq_id, nb_events)?;
+        }
+        "/monome/enc/delta" => {
+            let enc_nb = parse_to_int(osc_msg, 0)?; // Is 0-3
+            let delta = parse_to_int(osc_msg, 1)? as f32;
+            let rot_sign = delta.signum();
+            let new_bpm = seq.params.read().bpm + rot_sign * delta * delta / 100.; // Arbitrary input acceleration
+            seq.params.write().bpm = if new_bpm < 0. { 0. } else { new_bpm };
+            eprintln!("BPM set to {}", seq.params.read().bpm);
         }
         _ => bail!("OSC path was not recognized"),
     }

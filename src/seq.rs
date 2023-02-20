@@ -14,7 +14,7 @@ use crate::seq::BaseSeqType::{Euclid, Random};
 #[derive(Debug, Clone)]
 pub struct Event {
     pub e_type: EventType,
-    /// Nb bars from sequence start (i.e. position on bpm grid)
+    /// Nb bars from sequence start (i.e. position on grid)
     pub bar_pos: u32,
     /// Ties the event to its [BaseSeq]
     pub id: u32,
@@ -52,7 +52,7 @@ pub struct Sequencer {
 }
 
 impl Sequencer {
-    pub fn new(bpm: u16, loop_length: u32) -> Self {
+    pub fn new(bpm: f32, loop_length: u32) -> Self {
         let seq_params = SeqParams {
             status: SeqStatus::Stop,
             bpm,
@@ -265,7 +265,7 @@ pub enum SeqStatus {
 
 pub struct SeqParams {
     pub status: SeqStatus,
-    pub bpm: u16,
+    pub bpm: f32,
     /// In bars, 16 is 4 measures
     pub loop_length: u32,
     /// Counter of total nb of BaseSeqs ever created, used for [BaseSeq] id

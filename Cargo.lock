@@ -372,9 +372,9 @@ checksum = "b9b1a3d5f46d53f4a3478e2be4a5a5ce5108ea58b100dcd139830eae7f79a3a1"
 
 [[package]]
 name = "rosc"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3ffa5031906aec9fbbe2fd49094692297cd5b62e518c09e01a419194dc1a211"
+checksum = "10b751c26b740b6e8c37df88d2aa04dd4ea0f5a592ddd15ab21707ff925575dd"
 dependencies = [
  "byteorder",
  "nom",

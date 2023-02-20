@@ -47,6 +47,7 @@ Additionally: choose the correct parameter spaces for live user input.
 
 ### To fix:
 
+- Fix euclid start/stop first loop silent
 - Fix empty doesnt turn notes off: set to stop, wait, delete notes
 - Fix: Set loop len to 1, then to 16, gives a silent loop
 - Have a stream of events consumed in the jack process, filled by an external thread for random deviation generation, based on base sequence (could be used for e.g. euclidian rhythm, as loop_len could be factored into each BaseSeq). Use a dynamic stream height depending on bpm, flush on param change. Or use a crossbeam::SeqQueue?
