@@ -95,10 +95,11 @@ impl Sequencer {
         println!("Inserted base sequence id {}", seq_params.base_seq_incr);
         seq_params.base_seq_incr += 1;
         //Insert events
-        let events = match base_seq.params.ty {
+        let mut events = match base_seq.params.ty {
             Random(_) => gen_rand_midi_vec(&seq_params, &base_seq),
             Euclid(_) => gen_euclid_midi_vec(&seq_params, &base_seq)?,
         };
+        events.sort_by_key(|e| e.bar_pos);
         self.insert_events(events);
         self.sync_event_head();
         self.base_seqs.write().push(base_seq);

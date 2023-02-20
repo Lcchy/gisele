@@ -113,7 +113,6 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
             let time_incr = rng.gen_range(0..seq_params.loop_length);
             step_offset = (step_offset + time_incr) % seq_params.loop_length;
         }
-        events_buffer.sort_by_key(|e| e.bar_pos);
     } else {
         eprintln!("Could not insert BaseSeq as its not Random.")
     }
