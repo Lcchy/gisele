@@ -121,6 +121,7 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
     events_buffer
 }
 
+/// After http://cgm.cs.mcgill.ca/~godfried/publications/banff.pdf
 fn gen_euclid(pulses: u32, steps: u32) -> anyhow::Result<Vec<u8>> {
     if steps < pulses {
         anyhow::bail!("Steps should be less than pulses.")
@@ -130,6 +131,9 @@ fn gen_euclid(pulses: u32, steps: u32) -> anyhow::Result<Vec<u8>> {
 
     fn gen_euclid_rec(mut head: Vec<Vec<u8>>, mut tail: Vec<Vec<u8>>) -> Vec<u8> {
         let mut new_head = vec![];
+        if head.is_empty() {
+            return tail.concat();
+        }
         while let Some(t) = tail.pop() {
             if let Some(h) = head.pop() {
                 new_head.push([h, t].concat());
@@ -138,10 +142,11 @@ fn gen_euclid(pulses: u32, steps: u32) -> anyhow::Result<Vec<u8>> {
                 break;
             }
         }
+
         if tail.is_empty() && !head.is_empty() {
             tail = head;
         }
-        if tail.len() < 2 {
+        if tail.len() <= 1 {
             return [new_head.concat(), tail.concat()].concat();
         }
         gen_euclid_rec(new_head, tail)
@@ -225,16 +230,27 @@ pub fn gen_euclid_midi_vec(
 
 #[test]
 fn test_euclid() {
+    assert_eq!(gen_euclid(0, 0).unwrap(), vec![]);
+    assert_eq!(gen_euclid(0, 1).unwrap(), vec![0]);
+    assert_eq!(gen_euclid(1, 1).unwrap(), vec![1]);
     assert_eq!(gen_euclid(1, 2).unwrap(), vec![1, 0]);
+    assert_eq!(gen_euclid(0, 3).unwrap(), vec![0, 0, 0]);
+    assert_eq!(gen_euclid(3, 3).unwrap(), vec![1, 1, 1]);
+    assert_eq!(gen_euclid(2, 3).unwrap(), vec![1, 0, 1]);
     assert_eq!(gen_euclid(1, 3).unwrap(), vec![1, 0, 0]);
     assert_eq!(gen_euclid(1, 4).unwrap(), vec![1, 0, 0, 0,]);
+    assert_eq!(gen_euclid(3, 4).unwrap(), vec![1, 0, 1, 1]);
+    assert_eq!(gen_euclid(2, 5).unwrap(), vec![1, 0, 1, 0, 0]);
+    assert_eq!(gen_euclid(5, 8).unwrap(), vec![1, 0, 1, 1, 0, 1, 1, 0]);
+    assert_eq!(gen_euclid(7, 8).unwrap(), vec![1, 0, 1, 1, 1, 1, 1, 1]);
     assert_eq!(
         gen_euclid(4, 12).unwrap(),
         vec![1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,]
     );
-    assert_eq!(gen_euclid(2, 3).unwrap(), vec![1, 0, 1]);
-    assert_eq!(gen_euclid(2, 5).unwrap(), vec![1, 0, 1, 0, 0]);
-    assert_eq!(gen_euclid(3, 4).unwrap(), vec![1, 0, 1, 1]);
+    assert_eq!(
+        gen_euclid(13, 24).unwrap(),
+        vec![1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+    );
 }
 
 #[test]
