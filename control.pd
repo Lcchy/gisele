@@ -15,30 +15,33 @@
 #X coords 0 -1 2 2 100 90 2 100 100;
 #X restore 71 29 pd sub;
 #X obj 769 155 r osc_sender;
-#N canvas 2092 519 1020 794 set_note_len 0;
-#X obj 51 287 s osc_sender;
-#X obj 51 257 oscformat -f ii /gisele/set_note_len;
+#N canvas 1549 486 1492 1221 set_note_len 0;
+#X obj 59 334 s osc_sender;
+#X obj 59 304 oscformat -f ii /gisele/set_note_len;
 #X obj 113 137 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 2 256;
 #X text 184 134 Note len;
 #X text 183 107 Base seq;
-#X obj 50 227 pack f f;
-#X obj 59 192 t b f;
+#X obj 126 228 pack f f;
 #X obj 114 111 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0 256;
+#X obj 60 270 list store;
+#X obj 61 180 t b b f;
 #X connect 1 0 0 0;
-#X connect 2 0 6 0;
-#X connect 5 0 1 0;
+#X connect 2 0 8 0;
+#X connect 5 0 7 1;
 #X connect 6 0 5 0;
-#X connect 6 1 5 1;
-#X connect 7 0 5 0;
+#X connect 7 0 1 0;
+#X connect 8 0 7 0;
+#X connect 8 1 5 0;
+#X connect 8 2 5 1;
 #X coords 0 -1 1 1 150 60 2 100 100;
 #X restore 194 29 pd set_note_len;
 #N canvas 1960 377 1602 1065 set_bpm 0;
 #X obj 117 182 oscformat -f i /gisele/set_bpm;
 #X obj 117 206 s osc_sender;
 #X obj 117 134 nbx 5 14 1 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 426 256;
+#000000 #000000 120 256;
 #X text 127 106 BPM;
 #X connect 0 0 1 0;
 #X connect 2 0 0 0;
@@ -105,7 +108,7 @@
 #X connect 5 0 6 0;
 #X connect 6 0 1 0;
 #X coords 0 -1 1 1 160 60 2 100 100;
-#X restore 77 247 pd regenerate;
+#X restore 75 245 pd regenerate;
 #N canvas 1186 413 1590 1137 empty 0;
 #X obj 119 117 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
@@ -120,49 +123,53 @@
 #X restore 253 254 pd empty;
 #N canvas 1549 486 1492 1221 set_root 0;
 #X obj 125 161 nbx 5 14 0 12 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 10 256;
+#000000 #000000 5 256;
 #X obj 124 136 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0 256;
 #X text 198 131 Base Seq;
 #X text 196 155 Semitones;
-#X obj 124 187 nbx 5 14 0 8 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#X obj 123 188 nbx 5 14 0 8 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 3 256;
 #X text 198 182 Octave;
-#X obj 198 358 oscformat -f ii /gisele/set_root;
-#X obj 198 382 s osc_sender;
-#X obj 155 230 * 12;
-#X obj 198 329 pack f f;
-#X obj 183 262 + 12;
-#X obj 195 229 t b f;
-#X obj 208 297 t b f;
+#X obj 179 420 oscformat -f ii /gisele/set_root;
+#X obj 179 444 s osc_sender;
+#X obj 137 248 * 12;
+#X obj 180 347 pack f f;
+#X obj 165 280 + 12;
+#X obj 177 247 t b f;
 #X text 122 109 Root;
 #X text 299 131 Midi note;
-#X obj 309 156 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 48 256;
+#X obj 309 156 nbx 5 14 12 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#000000 #000000 40 256;
+#X obj 179 389 list store;
+#X obj 196 310 t b b f;
+#X obj 130 223 + 1;
 #X connect 0 0 11 0;
 #X connect 1 0 9 0;
-#X connect 4 0 8 0;
+#X connect 4 0 17 0;
 #X connect 6 0 7 0;
 #X connect 8 0 10 0;
-#X connect 9 0 6 0;
-#X connect 10 0 12 0;
+#X connect 9 0 15 1;
+#X connect 10 0 16 0;
 #X connect 11 0 10 0;
 #X connect 11 1 10 1;
-#X connect 12 0 9 0;
-#X connect 12 1 9 1;
-#X connect 15 0 12 0;
+#X connect 14 0 16 0;
+#X connect 15 0 6 0;
+#X connect 16 0 15 0;
+#X connect 16 1 9 0;
+#X connect 16 2 9 1;
+#X connect 17 0 8 0;
 #X coords 0 -1 1 1 300 110 2 100 100;
 #X restore 68 324 pd set_root;
-#N canvas 1343 363 1602 1065 set_loop_len 0;
+#N canvas 1549 486 1492 1221 set_loop_len 0;
 #X obj 127 164 hradio 25 1 1 8 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 3;
 #X obj 225 287 route 0 1 2 3 4 5 6 7;
 #X obj 255 113 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 33 256;
+#000000 #000000 19 256;
 #X msg 166 343 0, f 2;
-#X obj 95 496 s osc_sender;
-#X obj 97 407 t b f;
-#X obj 96 443 pack f f;
+#X obj 123 528 s osc_sender;
+#X obj 123 429 pack f f;
 #X text 128 110 Nb Events;
 #X text 231 222 Base Seq;
 #X obj 164 226 nbx 5 14 0 1e+37 0 0 empty empty empty 0 -8 0 10 #fcfcfc
@@ -182,30 +189,34 @@
 #X msg 419 344 200;
 #X msg 474 346 400;
 #X msg 523 347 800;
-#X obj 95 472 oscformat -f ii /gisele/random_base/set_nb_events;
+#X obj 123 504 oscformat -f ii /gisele/random_base/set_nb_events;
+#X obj 109 466 list store;
+#X obj 106 388 t b b f;
 #X connect 0 0 1 0;
 #X connect 1 0 3 0;
-#X connect 1 1 18 0;
-#X connect 1 2 19 0;
-#X connect 1 3 20 0;
-#X connect 1 4 21 0;
-#X connect 1 5 22 0;
-#X connect 1 6 23 0;
-#X connect 1 7 24 0;
-#X connect 2 0 5 0;
-#X connect 3 0 5 0;
-#X connect 5 0 6 0;
-#X connect 5 1 6 1;
-#X connect 6 0 25 0;
-#X connect 9 0 6 0;
-#X connect 18 0 5 0;
-#X connect 19 0 5 0;
-#X connect 20 0 5 0;
-#X connect 21 0 5 0;
-#X connect 22 0 5 0;
-#X connect 23 0 5 0;
-#X connect 24 0 5 0;
-#X connect 25 0 4 0;
+#X connect 1 1 17 0;
+#X connect 1 2 18 0;
+#X connect 1 3 19 0;
+#X connect 1 4 20 0;
+#X connect 1 5 21 0;
+#X connect 1 6 22 0;
+#X connect 1 7 23 0;
+#X connect 2 0 26 0;
+#X connect 3 0 26 0;
+#X connect 5 0 25 1;
+#X connect 8 0 5 0;
+#X connect 17 0 26 0;
+#X connect 18 0 26 0;
+#X connect 19 0 26 0;
+#X connect 20 0 26 0;
+#X connect 21 0 26 0;
+#X connect 22 0 26 0;
+#X connect 23 0 26 0;
+#X connect 24 0 4 0;
+#X connect 25 0 24 0;
+#X connect 26 0 25 0;
+#X connect 26 1 5 0;
+#X connect 26 2 5 1;
 #X coords 0 -1 1 1 250 150 2 100 100;
 #X restore 401 265 pd set_loop_len;
 #N canvas 1549 486 1492 1221 add_random_base 0;
@@ -219,8 +230,8 @@
 #X text 187 229 Velocity avg +-;
 #X obj 309 231 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 14 256;
-#X obj 121 146 nbx 5 14 12 127 0 0 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 0 256;
+#X obj 121 146 nbx 5 14 12 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
+#000000 #000000 44 256;
 #X text 188 143 Root Note;
 #X obj 122 172 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 14 256;
@@ -238,7 +249,7 @@
 #X obj 320 492 oscformat -f iiififi /gisele/add_random_base;
 #X obj 40 459 pack f f f f f f f;
 #X obj 307 172 nbx 5 14 1 16 0 1 empty empty empty 0 -8 0 10 #fcfcfc
-#000000 #000000 1 256;
+#000000 #000000 2 256;
 #X text 303 148 Midi Ch;
 #X obj 355 367 t b f;
 #X connect 0 0 16 0;

@@ -45,7 +45,7 @@ Additionally: choose the correct parameter spaces for live user input.
 - Percussion slicer with Blackbox: use euclids
 - Minimalism
 
-### TODO:
+### To fix:
 
 - Fix empty doesnt turn notes off: set to stop, wait, delete notes
 - Fix: Set loop len to 1, then to 16, gives a silent loop
@@ -61,8 +61,8 @@ Additionally: choose the correct parameter spaces for live user input.
 
 ### Steps:
 
-- Set init vals in control.pd, make it more usable (see add_base_seq)
 - Test euclid gen midi with constant note: make it work with general loop_len first, awaits major refactor
+- Add monophonic random base seq mode
 - Add random deviations (deviation cells) from BaseSeq: add gen_rand_note() in jack_process
 - SLICER
 - Improve set_nb_events: seq should be identical when coming back to init_nb

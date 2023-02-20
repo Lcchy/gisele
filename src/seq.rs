@@ -110,7 +110,7 @@ impl Sequencer {
         RwLockReadGuard::try_map(self.base_seqs.read(), |p| {
             p.iter().find(|s| s.id == base_seq_id)
         })
-        .map_err(|_| anyhow::format_err!("Base sequence could not be found."))
+        .map_err(|_| anyhow::format_err!("Base sequence {base_seq_id} could not be found."))
     }
 
     /// BaseSeq mutable getter, mapping the lock contents in order to preserve the lifetime
@@ -121,7 +121,7 @@ impl Sequencer {
         RwLockWriteGuard::try_map(self.base_seqs.write(), |p| {
             p.iter_mut().find(|s| s.id == base_seq_id)
         })
-        .map_err(|_| anyhow::format_err!("Base sequence could not be found."))
+        .map_err(|_| anyhow::format_err!("Base sequence {base_seq_id} could not be found."))
     }
 
     pub fn rm_base_seq_events(&self, base_seq_id: u32) {

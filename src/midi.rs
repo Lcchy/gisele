@@ -35,7 +35,7 @@ impl MidiNote {
 }
 
 pub fn note_to_midi_pitch(note: &Note) -> u8 {
-    12 + note.octave * 12 + note.pitch_class.into_u8()
+    (note.octave + 1) * 12 + note.pitch_class.into_u8()
 }
 
 pub fn midi_pitch_to_note(pitch: u8) -> anyhow::Result<Note> {
@@ -238,7 +238,7 @@ fn test_euclid() {
 }
 
 #[test]
-fn test_midi_pitch() {
+fn test_note_to_midi_pitch() {
     assert_eq!(
         note_to_midi_pitch(&Note {
             pitch_class: PitchClass::A,
@@ -246,4 +246,39 @@ fn test_midi_pitch() {
         }),
         69
     );
+
+    let note = Note {
+        pitch_class: PitchClass::A,
+        octave: 0,
+    };
+    eprintln!("{}", note.octave);
+    assert_eq!(
+        note_to_midi_pitch(&Note {
+            pitch_class: PitchClass::A,
+            octave: 0
+        }),
+        21
+    );
+    assert_eq!(
+        note_to_midi_pitch(&Note {
+            pitch_class: PitchClass::B,
+            octave: 6
+        }),
+        95
+    );
+}
+
+#[test]
+fn test_midi_pitch_to_note() {
+    let a4 = midi_pitch_to_note(69).unwrap();
+    assert_eq!(a4.octave, 4);
+    assert_eq!(a4.pitch_class, PitchClass::A);
+
+    let a0 = midi_pitch_to_note(21).unwrap();
+    assert_eq!(a0.octave, 0);
+    assert_eq!(a0.pitch_class, PitchClass::A);
+
+    let b6 = midi_pitch_to_note(95).unwrap();
+    assert_eq!(b6.octave, 6);
+    assert_eq!(b6.pitch_class, PitchClass::B);
 }
