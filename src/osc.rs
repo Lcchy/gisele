@@ -32,7 +32,9 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             seq.params.write().bpm = parse_to_float(osc_msg, 0)?;
         }
         "/gisele/set_loop_length" => {
-            seq.params.write().loop_length = parse_to_int(osc_msg, 0)? as u32;
+            let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
+            let loop_len = parse_to_int(osc_msg, 1)? as u32;
+            seq.change_loop_len(base_seq_id, loop_len)?;
         }
         "/gisele/regenerate" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
@@ -53,15 +55,17 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             seq.params.write().status = SeqStatus::Stop;
         }
         "/gisele/add_random_base" => {
-            let root_note = parse_to_int(osc_msg, 0)? as u8;
-            let nb_events = parse_to_int(osc_msg, 1)? as u32;
-            let note_len_avg = parse_to_int(osc_msg, 2)? as u32;
-            let note_len_div = parse_to_float(osc_msg, 3)?;
-            let velocity_avg = parse_to_int(osc_msg, 4)? as u8;
-            let velocity_div = parse_to_float(osc_msg, 5)?;
-            let midi_ch = parse_to_midi_ch(osc_msg, 6)?;
+            let loop_length = parse_to_int(osc_msg, 0)? as u32;
+            let root_note = parse_to_int(osc_msg, 1)? as u8;
+            let nb_events = parse_to_int(osc_msg, 2)? as u32;
+            let note_len_avg = parse_to_int(osc_msg, 3)? as u32;
+            let note_len_div = parse_to_float(osc_msg, 4)?;
+            let velocity_avg = parse_to_int(osc_msg, 5)? as u8;
+            let velocity_div = parse_to_float(osc_msg, 6)?;
+            let midi_ch = parse_to_midi_ch(osc_msg, 7)?;
             let base_seq_params = BaseSeqParams {
                 ty: Random(RandomBase { nb_events }),
+                loop_length,
                 root_note: midi_pitch_to_note(root_note)?,
                 note_len_avg,
                 note_len_div,
@@ -72,17 +76,19 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             seq.add_base_seq(base_seq_params)?;
         }
         "/gisele/add_euclid_base" => {
-            let root_note = parse_to_int(osc_msg, 0)? as u8;
-            let pulses = parse_to_int(osc_msg, 1)? as u32;
-            let steps = parse_to_int(osc_msg, 2)? as u32;
-            let note_len_avg = parse_to_int(osc_msg, 3)? as u32;
-            let note_len_div = parse_to_float(osc_msg, 4)?;
-            let velocity_avg = parse_to_int(osc_msg, 5)? as u8;
-            let velocity_div = parse_to_float(osc_msg, 6)?;
-            let midi_ch = parse_to_midi_ch(osc_msg, 7)?;
+            let loop_length = parse_to_int(osc_msg, 0)? as u32;
+            let root_note = parse_to_int(osc_msg, 1)? as u8;
+            let pulses = parse_to_int(osc_msg, 2)? as u32;
+            let steps = parse_to_int(osc_msg, 3)? as u32;
+            let note_len_avg = parse_to_int(osc_msg, 4)? as u32;
+            let note_len_div = parse_to_float(osc_msg, 5)?;
+            let velocity_avg = parse_to_int(osc_msg, 6)? as u8;
+            let velocity_div = parse_to_float(osc_msg, 7)?;
+            let midi_ch = parse_to_midi_ch(osc_msg, 8)?;
 
             let base_seq_params = BaseSeqParams {
                 ty: Euclid(EuclidBase { pulses, steps }),
+                loop_length,
                 root_note: midi_pitch_to_note(root_note)?,
                 note_len_avg,
                 note_len_div,

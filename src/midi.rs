@@ -10,7 +10,7 @@ use crate::{
     seq::{
         BaseSeq, BaseSeqParams,
         BaseSeqType::{Euclid, Random},
-        EuclidBase, Event, RandomBase, SeqParams,
+        EuclidBase, Event, RandomBase,
     },
     EventType,
 };
@@ -43,30 +43,28 @@ pub fn midi_pitch_to_note(pitch: u8) -> anyhow::Result<Note> {
     // does not allow for negative octaves.
     let octave = (pitch / 12)
         .checked_sub(1)
-        .ok_or(anyhow!("Midi pitch must be >= 12"))?;
+        .ok_or_else(|| anyhow!("Midi pitch must be >= 12"))?;
     Ok(Note {
         pitch_class: PitchClass::from_u8(pitch),
         octave,
     })
 }
 
-pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Event> {
+pub fn gen_rand_midi_vec(rand_seq: &BaseSeq) -> Vec<Event> {
     let mut rng = rand::thread_rng();
     let mut events_buffer = vec![];
 
-    if let BaseSeq {
-        id,
-        params:
-            BaseSeqParams {
-                ty: Random(RandomBase { nb_events }),
-                root_note,
-                note_len_avg,
-                note_len_div,
-                velocity_avg,
-                velocity_div,
-                midi_ch,
-            },
-    } = rand_seq
+    let params = rand_seq.params.read();
+    if let BaseSeqParams {
+        ty: Random(RandomBase { nb_events }),
+        loop_length,
+        root_note,
+        note_len_avg,
+        note_len_div,
+        velocity_avg,
+        velocity_div,
+        midi_ch,
+    } = params.clone()
     {
         // Harmonic quantization
         let scale = Scale::new(
@@ -78,40 +76,40 @@ pub fn gen_rand_midi_vec(seq_params: &SeqParams, rand_seq: &BaseSeq) -> Vec<Even
         )
         .unwrap();
         let scale_notes = scale.notes();
-        let velocity_distr = Normal::new(*velocity_avg as f32, *velocity_div).unwrap();
-        let note_len_distr = Normal::new(*note_len_avg as f32, *note_len_div).unwrap();
+        let velocity_distr = Normal::new(velocity_avg as f32, velocity_div).unwrap();
+        let note_len_distr = Normal::new(note_len_avg as f32, note_len_div).unwrap();
 
         let mut step_offset = 0;
-        for _ in 0..*nb_events {
+        for _ in 0..nb_events {
             let pitch = rng.gen_range(0..scale_notes.len());
             let velocity = velocity_distr.sample(&mut rng) as u8;
             let note_len = note_len_distr.sample(&mut rng) as u32;
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
-                    channel: *midi_ch,
+                    channel: midi_ch,
                     pitch: note_to_midi_pitch(&scale_notes[pitch]),
                     velocity,
                     on_off: true,
                 }),
                 bar_pos: step_offset,
-                id: *id,
+                id: rand_seq.id,
             };
             let event_midi_off = Event {
                 e_type: EventType::MidiNote(MidiNote {
-                    channel: *midi_ch,
+                    channel: midi_ch,
                     pitch: note_to_midi_pitch(&scale_notes[pitch]),
                     velocity,
                     on_off: false,
                 }),
-                bar_pos: (step_offset + note_len) % seq_params.loop_length,
-                id: *id,
+                bar_pos: (step_offset + note_len) % loop_length,
+                id: rand_seq.id,
             };
 
             events_buffer.push(event_midi_on);
             events_buffer.push(event_midi_off);
-            let time_incr = rng.gen_range(0..seq_params.loop_length);
-            step_offset = (step_offset + time_incr) % seq_params.loop_length;
+            let time_incr = rng.gen_range(0..loop_length);
+            step_offset = (step_offset + time_incr) % loop_length;
         }
     } else {
         eprintln!("Could not insert BaseSeq as its not Random.")
@@ -154,39 +152,34 @@ fn gen_euclid(pulses: u32, steps: u32) -> anyhow::Result<Vec<u8>> {
     Ok(gen_euclid_rec(head, tail))
 }
 
-pub fn gen_euclid_midi_vec(
-    seq_params: &SeqParams,
-    euclid_seq: &BaseSeq,
-) -> anyhow::Result<Vec<Event>> {
+pub fn gen_euclid_midi_vec(euclid_seq: &BaseSeq) -> anyhow::Result<Vec<Event>> {
     let mut events_buffer = vec![];
 
-    if let BaseSeq {
-        id,
-        params:
-            BaseSeqParams {
-                ty: Euclid(EuclidBase { pulses, steps }),
-                root_note,
-                note_len_avg,
-                note_len_div,
-                velocity_avg,
-                velocity_div,
-                midi_ch,
-            },
-    } = euclid_seq
+    let params = euclid_seq.params.read();
+    if let BaseSeqParams {
+        ty: Euclid(EuclidBase { pulses, steps }),
+        root_note,
+        note_len_avg,
+        note_len_div,
+        velocity_avg,
+        velocity_div,
+        midi_ch,
+        loop_length,
+    } = params.clone()
     {
-        if seq_params.loop_length % *steps != 0 {
+        if loop_length % steps != 0 {
             eprintln!("Could not generate euclidean rhythm for indivisible loop-length.");
             return Ok(events_buffer);
         }
 
         let mut rng = rand::thread_rng();
-        let velocity_distr = Normal::new(*velocity_avg as f32, *velocity_div).unwrap();
-        let note_len_distr = Normal::new(*note_len_avg as f32, *note_len_div).unwrap();
+        let velocity_distr = Normal::new(velocity_avg as f32, velocity_div).unwrap();
+        let note_len_distr = Normal::new(note_len_avg as f32, note_len_div).unwrap();
 
-        let euclid_step_len_bar = seq_params.loop_length / *steps;
-        let euclid_rhythm = gen_euclid(*pulses, *steps)?;
+        let euclid_step_len_bar = loop_length / steps;
+        let euclid_rhythm = gen_euclid(pulses, steps)?;
 
-        let pitch = note_to_midi_pitch(root_note);
+        let pitch = note_to_midi_pitch(&root_note);
 
         let mut time_offset = 0;
         for i in euclid_rhythm {
@@ -199,23 +192,23 @@ pub fn gen_euclid_midi_vec(
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
-                    channel: *midi_ch,
+                    channel: midi_ch,
                     pitch,
                     velocity,
                     on_off: true,
                 }),
                 bar_pos: time_offset,
-                id: *id,
+                id: euclid_seq.id,
             };
             let event_midi_off = Event {
                 e_type: EventType::MidiNote(MidiNote {
-                    channel: *midi_ch,
+                    channel: midi_ch,
                     pitch,
                     velocity,
                     on_off: false,
                 }),
-                bar_pos: (time_offset + note_len) % seq_params.loop_length,
-                id: *id,
+                bar_pos: (time_offset + note_len) % loop_length,
+                id: euclid_seq.id,
             };
             events_buffer.push(event_midi_on);
             events_buffer.push(event_midi_off);

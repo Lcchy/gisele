@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .unwrap();
 
     // Init values
-    let seq_arc = Arc::new(Sequencer::new(INIT_BPM, 16));
+    let seq_arc = Arc::new(Sequencer::new(INIT_BPM));
     let seq_ref = seq_arc.clone();
 
     // Define the Jack process
@@ -37,7 +37,6 @@ fn main() -> Result<()> {
             return jack::Control::Continue;
         }
 
-        let event_buffer = &*seq_ref.event_buffer.read();
         let mut out_buff = out_port.writer(ps);
         let cy_times = ps.cycle_times().unwrap();
 
@@ -45,22 +44,26 @@ fn main() -> Result<()> {
         seq_int.j_window_time_end += (seq_params.bpm as f64
             * (cy_times.next_usecs as f64 - cy_times.current_usecs as f64))
             / 6e7;
-        seq_int.j_window_time_end %= seq_params.loop_length as f64;
 
-        let event_head_before = *seq_ref.event_head.read();
         let new_curr_bar = seq_int.j_window_time_end as u32;
         if new_curr_bar != seq_int.curr_bar {
             seq_int.curr_bar = new_curr_bar;
+            println!("Current bar: {}", new_curr_bar);
+        }
+        let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;
+
+        for base_seq in &*seq_ref.base_seqs.read() {
+            let mut seq_int = seq_ref.internal.write();
+
+            let loop_len = base_seq.params.read().loop_length;
+            let event_head_before = *base_seq.event_head.read();
+            let event_buffer = &base_seq.event_buffer.read();
             println!(
                 "Current bar: {} / {} | Event head at {}",
-                new_curr_bar, seq_params.loop_length, event_head_before
+                new_curr_bar, loop_len, event_head_before
             );
-        }
-
-        let halting = seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop;
-        loop {
-            let curr_event_head = *seq_ref.event_head.read();
-            if let Some(next_event) = &event_buffer.get(curr_event_head) {
+            while let Some(next_event) = &event_buffer.get(*base_seq.event_head.read()) {
+                // if let Some(next_event) = &event_buffer.get(*base_seq.event_head.read()) {
                 let mut push_event = seq_int.event_in_cycle(next_event.bar_pos as f64);
 
                 // We let the seq play once through all midi off notes when halting.
@@ -70,17 +73,17 @@ fn main() -> Result<()> {
                         if !n.on_off {
                             // Let through all midi off msgs for Pause and stop.
                             push_event = true;
-                        } else if (*seq_ref.event_head.read() + 1) % event_buffer.len()
+                        } else if (&*base_seq.event_head.read() + 1) % event_buffer.len()
                             != event_head_before
                         {
                             jump_event = true;
                         }
                     }
                 };
-                jump_event = jump_event || seq_params.loop_length <= next_event.bar_pos;
+                jump_event = jump_event || loop_len <= next_event.bar_pos;
 
                 if jump_event {
-                    seq_ref.incr_event_head();
+                    base_seq.incr_event_head();
                 } else if push_event {
                     match next_event.e_type {
                         EventType::MidiNote(ref note) => {
@@ -99,32 +102,30 @@ fn main() -> Result<()> {
                         }
                         EventType::_Fill => todo!(),
                     }
-                    seq_ref.incr_event_head();
+                    base_seq.incr_event_head();
                 } else {
                     // Complete the current cycle when reaching a note to be played in the next one
                     break;
                 }
 
                 // Stop when having played all noteOffs in loop before pause/stop
-                if *seq_ref.event_head.read() == event_head_before {
+                if *base_seq.event_head.read() == event_head_before {
                     break;
                 }
-            } else {
-                break;
+            }
+
+            // Reset the seq to start or current position in case of a stop or pause
+            if seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop {
+                *base_seq.event_head.write() = event_head_before;
+                seq_int.status = SeqInternalStatus::Silence;
+            }
+            if seq_params.status == SeqStatus::Stop {
+                println!("Sequencer Stopped.");
+                seq_ref.stop_reset(seq_int);
             }
         }
 
         seq_int.j_window_time_start = seq_int.j_window_time_end;
-
-        // Reset the seq to start or current position in case of a stop or pause
-        if seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop {
-            *seq_ref.event_head.write() = event_head_before;
-            seq_int.status = SeqInternalStatus::Silence;
-        }
-        if seq_params.status == SeqStatus::Stop {
-            println!("Sequencer Stopped.");
-            seq_ref.stop_reset(seq_int);
-        }
 
         jack::Control::Continue
     };
