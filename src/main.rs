@@ -48,7 +48,7 @@ fn main() -> Result<()> {
         let new_curr_bar = seq_int.j_window_time_end as u32;
         if new_curr_bar != seq_int.curr_bar {
             seq_int.curr_bar = new_curr_bar;
-            println!("Current bar: {new_curr_bar}");
+            println!("Current bar: {new_curr_bar} ({})", new_curr_bar % 16);
         }
         drop(seq_int);
 

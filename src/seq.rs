@@ -62,7 +62,7 @@ impl Sequencer {
         let base_seq = BaseSeq::new_fill(
             base_seq_params,
             seq_params.base_seq_incr,
-            self.internal.read().j_window_time_end as u32,
+            &self.internal.read(),
         )?;
         self.base_seqs.write().push(base_seq);
         println!("Inserted base sequence id {}", seq_params.base_seq_incr);
@@ -80,16 +80,13 @@ impl Sequencer {
 
     pub fn regen_base_seq(&self, base_seq_id: u32) -> anyhow::Result<()> {
         let base_seq_mut = self.get_base_seq(base_seq_id)?;
-        base_seq_mut.gen_fill(self.internal.read().j_window_time_end as u32)?;
+        base_seq_mut.gen_fill(&self.internal.read())?;
         Ok(())
     }
 
     pub fn change_note_len(&self, base_seq_id: u32, target_note_len: u32) -> anyhow::Result<()> {
         let base_seq_mut = self.get_base_seq(base_seq_id)?;
-        base_seq_mut.change_note_len(
-            target_note_len,
-            self.internal.read().j_window_time_end as u32,
-        )
+        base_seq_mut.change_note_len(target_note_len, &self.internal.read())
     }
 
     pub fn change_loop_len(&self, base_seq_id: u32, target_loop_len: u32) -> anyhow::Result<()> {
@@ -101,10 +98,7 @@ impl Sequencer {
     pub fn set_nb_events(&self, base_seq_id: u32, target_nb_events: u32) -> anyhow::Result<()> {
         println!("Regenerating base sequence..");
         let base_seq_mut = self.get_base_seq(base_seq_id)?;
-        base_seq_mut.set_nb_events(
-            target_nb_events,
-            self.internal.read().j_window_time_end as u32,
-        )?;
+        base_seq_mut.set_nb_events(target_nb_events, &self.internal.read())?;
         Ok(())
     }
 
@@ -191,21 +185,21 @@ impl BaseSeq {
     /// Create a new base sequence and fill its event buffer.
     /// The jack process window end time gives a reference point to the present time for the synchronizing
     /// of the BaseSeq event_head
-    fn new_fill(params: BaseSeqParams, id: u32, jack_time_end: u32) -> anyhow::Result<BaseSeq> {
+    fn new_fill(params: BaseSeqParams, id: u32, seq_int: &SeqInternal) -> anyhow::Result<BaseSeq> {
         let base_seq = BaseSeq {
             params: Arc::new(RwLock::new(params)),
             event_head: Arc::new(RwLock::new(0)),
             event_buffer: Arc::new(RwLock::new(vec![])),
             id,
         };
-        base_seq.gen_fill(jack_time_end)?;
+        base_seq.gen_fill(seq_int)?;
         Ok(base_seq)
     }
 
     /// Fill the event buffer of a BaseSeq.
     /// The jack process window end time gives a reference point to the present time for the synchronizing
     /// of the BaseSeq event_head
-    fn gen_fill(&self, jack_time_end: u32) -> anyhow::Result<()> {
+    fn gen_fill(&self, seq_int: &SeqInternal) -> anyhow::Result<()> {
         //Insert events
         let mut events = match self.params.read().ty {
             Random(_) => gen_rand_midi_vec(self),
@@ -213,15 +207,18 @@ impl BaseSeq {
         };
         events.sort_by_key(|e| e.bar_pos);
         *self.event_buffer.write() = events;
-        self.sync_event_head(jack_time_end);
+        self.sync_event_head(seq_int);
         Ok(())
     }
 
-    fn sync_event_head(&self, jack_time_end: u32) {
+    fn sync_event_head(&self, seq_int: &SeqInternal) {
         // Reset event_head to next idx right after the current jack window
         // The preliminary binary search is an optional optimization.
         let event_buffer = self.event_buffer.read();
-        let mut new_head = match event_buffer.binary_search_by_key(&jack_time_end, |e| e.bar_pos) {
+        let mut new_head = match event_buffer.binary_search_by_key(
+            &(seq_int.j_window_time_end as u32 % self.params.read().loop_length),
+            |e| e.bar_pos,
+        ) {
             Ok(idx) | Err(idx) => idx,
         };
 
@@ -246,7 +243,7 @@ impl BaseSeq {
     pub(self) fn change_note_len(
         &self,
         target_note_len: u32,
-        jack_time_end: u32,
+        seq_int: &SeqInternal,
     ) -> anyhow::Result<()> {
         let mut params = self.params.write();
         let mut event_buff = self.event_buffer.write();
@@ -262,14 +259,14 @@ impl BaseSeq {
         params.note_len_avg = target_note_len;
 
         event_buff.sort_by_key(|e| e.bar_pos);
-        self.sync_event_head(jack_time_end);
+        self.sync_event_head(seq_int);
         Ok(())
     }
 
     pub(self) fn set_nb_events(
         &self,
         target_nb_events: u32,
-        jack_time_end: u32,
+        seq_int: &SeqInternal,
     ) -> anyhow::Result<()> {
         println!("Regenerating base sequence..");
         let mut params = self.params.write();
@@ -282,7 +279,7 @@ impl BaseSeq {
         } else {
             bail!("The given base_seq_id is wrong.");
         };
-        self.gen_fill(jack_time_end)?;
+        self.gen_fill(seq_int)?;
         Ok(())
     }
 

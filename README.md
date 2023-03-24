@@ -62,6 +62,7 @@ Additionally: choose the correct parameter spaces for live user input.
 
 ### Steps:
 
+- Add notes_off vec in base_seq for easier stop logic in main loop
 - Test euclid gen midi with constant note: make it work with general loop_len first, awaits major refactor
 - Add monophonic random base seq mode
 - Add random deviations (deviation cells) from BaseSeq: add gen_rand_note() in jack_process
