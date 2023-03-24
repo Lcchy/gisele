@@ -1,6 +1,6 @@
 use anyhow::bail;
 use num_derive::FromPrimitive;
-use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use rust_music_theory::note::Note;
 use std::cmp::min;
 use std::sync::Arc;
@@ -38,7 +38,8 @@ pub struct Sequencer {
     pub params: Arc<RwLock<SeqParams>>,
     /// Current state of the [BaseSeq]s, base sequences from which events are generated
     pub base_seqs: Arc<RwLock<Vec<BaseSeq>>>,
-    /// Internal sequencer parameters, only accessed by the Jack loop
+    /// Internal sequencer parameters
+    /// Write: Jack process, Read: OSC process
     pub internal: Arc<RwLock<SeqInternal>>,
 }
 
@@ -120,12 +121,10 @@ impl Sequencer {
         seq_params.base_seq_incr = 0;
     }
 
-    pub fn stop_reset(&self, mut seq_int_lock: RwLockWriteGuard<SeqInternal>) {
+    pub fn reset_base_seqs(&self) {
         for base_seq in &*self.base_seqs.read() {
             *base_seq.event_head.write() = 0;
         }
-        seq_int_lock.j_window_time_start = 0.;
-        seq_int_lock.j_window_time_end = 0.;
     }
 }
 
@@ -222,10 +221,9 @@ impl BaseSeq {
         // Reset event_head to next idx right after the current jack window
         // The preliminary binary search is an optional optimization.
         let event_buffer = self.event_buffer.read();
-        let mut new_head =
-            match event_buffer.binary_search_by_key(&(jack_time_end as u32), |e| e.bar_pos) {
-                Ok(idx) | Err(idx) => idx,
-            };
+        let mut new_head = match event_buffer.binary_search_by_key(&jack_time_end, |e| e.bar_pos) {
+            Ok(idx) | Err(idx) => idx,
+        };
 
         if new_head == event_buffer.len() {
             new_head = 0;
@@ -373,17 +371,15 @@ impl SeqInternal {
         }
     }
 
-    pub fn event_in_cycle(&self, event_time: f64) -> bool {
-        // println!(
-        //     "Window start {} | Event Time {} | Window end {}",
-        //     self.j_window_time_start, event_time, self.j_window_time_end
-        // );
-        if self.j_window_time_start < self.j_window_time_end {
-            self.j_window_time_start <= event_time && event_time < self.j_window_time_end
+    pub fn event_in_cycle(&self, event_time: f64, loop_len: u32) -> bool {
+        let win_start_looped = self.j_window_time_start % (loop_len as f64);
+        let win_end_looped = self.j_window_time_end % (loop_len as f64);
+        if win_start_looped < win_end_looped {
+            win_start_looped <= event_time && event_time < win_end_looped
         } else {
             // EventBuffer wrapping case
             println!("Wrapping EventBuffer..");
-            self.j_window_time_start <= event_time || event_time < self.j_window_time_end
+            win_start_looped <= event_time || event_time < win_end_looped
         }
     }
 }
