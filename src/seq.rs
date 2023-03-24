@@ -96,7 +96,6 @@ impl Sequencer {
     }
 
     pub fn set_nb_events(&self, base_seq_id: u32, target_nb_events: u32) -> anyhow::Result<()> {
-        println!("Regenerating base sequence..");
         let base_seq_mut = self.get_base_seq(base_seq_id)?;
         base_seq_mut.set_nb_events(target_nb_events, &self.internal.read())?;
         Ok(())
@@ -268,7 +267,6 @@ impl BaseSeq {
         target_nb_events: u32,
         seq_int: &SeqInternal,
     ) -> anyhow::Result<()> {
-        println!("Regenerating base sequence..");
         let mut params = self.params.write();
         if let BaseSeqParams {
             ty: Random(RandomBase { ref mut nb_events }),
@@ -279,6 +277,7 @@ impl BaseSeq {
         } else {
             bail!("The given base_seq_id is wrong.");
         };
+        drop(params);
         self.gen_fill(seq_int)?;
         Ok(())
     }
