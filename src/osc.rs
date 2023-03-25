@@ -52,7 +52,10 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/empty" => {
             seq.empty();
-            seq.params.write().status = SeqStatus::Stop;
+        }
+        "/gisele/remove_base_seq" => {
+            let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
+            seq.remove_base_seq(base_seq_id)?;
         }
         "/gisele/add_random_base" => {
             let loop_length = parse_to_int(osc_msg, 0)? as u32;

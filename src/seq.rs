@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use num_derive::FromPrimitive;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use rust_music_theory::note::Note;
@@ -79,31 +79,31 @@ impl Sequencer {
     }
 
     pub fn regen_base_seq(&self, base_seq_id: u32) -> anyhow::Result<()> {
-        let base_seq_mut = self.get_base_seq(base_seq_id)?;
-        base_seq_mut.gen_fill(&self.internal.read())?;
+        let base_seq = self.get_base_seq(base_seq_id)?;
+        base_seq.gen_fill(&self.internal.read())?;
         Ok(())
     }
 
     pub fn change_note_len(&self, base_seq_id: u32, target_note_len: u32) -> anyhow::Result<()> {
-        let base_seq_mut = self.get_base_seq(base_seq_id)?;
-        base_seq_mut.change_note_len(target_note_len, &self.internal.read())
+        let base_seq = self.get_base_seq(base_seq_id)?;
+        base_seq.change_note_len(target_note_len, &self.internal.read())
     }
 
     pub fn change_loop_len(&self, base_seq_id: u32, target_loop_len: u32) -> anyhow::Result<()> {
-        let base_seq_mut = self.get_base_seq(base_seq_id)?;
-        base_seq_mut.params.write().loop_length = target_loop_len;
+        let base_seq = self.get_base_seq(base_seq_id)?;
+        base_seq.params.write().loop_length = target_loop_len;
         Ok(())
     }
 
     pub fn set_nb_events(&self, base_seq_id: u32, target_nb_events: u32) -> anyhow::Result<()> {
-        let base_seq_mut = self.get_base_seq(base_seq_id)?;
-        base_seq_mut.set_nb_events(target_nb_events, &self.internal.read())?;
+        let base_seq = self.get_base_seq(base_seq_id)?;
+        base_seq.set_nb_events(target_nb_events, &self.internal.read())?;
         Ok(())
     }
 
     pub fn transpose(&self, base_seq_id: u32, target_root_note: Note) -> anyhow::Result<()> {
-        let base_seq_mut = self.get_base_seq(base_seq_id)?;
-        base_seq_mut.transpose(target_root_note)?;
+        let base_seq = self.get_base_seq(base_seq_id)?;
+        base_seq.transpose(target_root_note)?;
         Ok(())
     }
 
@@ -118,6 +118,17 @@ impl Sequencer {
         for base_seq in &*self.base_seqs.read() {
             *base_seq.event_head.write() = 0;
         }
+    }
+
+    pub fn remove_base_seq(&self, base_seq_id: u32) -> anyhow::Result<()> {
+        let index = self
+            .base_seqs
+            .read()
+            .iter()
+            .position(|b| b.id == base_seq_id)
+            .ok_or(anyhow!("Could not find base sequence of id {base_seq_id}"))?;
+        self.base_seqs.write().remove(index);
+        Ok(())
     }
 }
 
