@@ -13,7 +13,7 @@ use crate::seq::BaseSeqType::{Euclid, Random};
 pub struct Event {
     pub e_type: EventType,
     /// Nb bars from sequence start (i.e. position on grid)
-    pub bar_pos: u32,
+    pub bar_pos: f32,
     /// Ties the event to its [BaseSeq]
     pub id: u32,
 }
@@ -84,12 +84,12 @@ impl Sequencer {
         Ok(())
     }
 
-    pub fn change_note_len(&self, base_seq_id: u32, target_note_len: u32) -> anyhow::Result<()> {
+    pub fn change_note_len(&self, base_seq_id: u32, target_note_len: f32) -> anyhow::Result<()> {
         let base_seq = self.get_base_seq(base_seq_id)?;
         base_seq.change_note_len(target_note_len, &self.internal.read())
     }
 
-    pub fn change_loop_len(&self, base_seq_id: u32, target_loop_len: u32) -> anyhow::Result<()> {
+    pub fn change_loop_len(&self, base_seq_id: u32, target_loop_len: f32) -> anyhow::Result<()> {
         let base_seq = self.get_base_seq(base_seq_id)?;
         base_seq.params.write().loop_length = target_loop_len;
         Ok(())
@@ -162,10 +162,10 @@ pub enum BaseSeqType {
 pub struct BaseSeqParams {
     pub ty: BaseSeqType,
     /// In bars, 16 is 4 measures
-    pub loop_length: u32,
+    pub loop_length: f32,
     pub root_note: Note,
     /// In bars
-    pub note_len_avg: u32,
+    pub note_len_avg: f32,
     /// Standard deviation from average value note_len in normal random generation
     /// In bars
     pub note_len_div: f32,
@@ -215,7 +215,7 @@ impl BaseSeq {
             Random(_) => gen_rand_midi_vec(self),
             Euclid(_) => gen_euclid_midi_vec(self)?,
         };
-        events.sort_by_key(|e| e.bar_pos);
+        events.sort_by_key(|e| (e.bar_pos * 1_000.) as u32); //TODO use FP32 instead
         *self.event_buffer.write() = events;
         self.sync_event_head(seq_int);
         Ok(())
@@ -226,8 +226,9 @@ impl BaseSeq {
         // The preliminary binary search is an optional optimization.
         let event_buffer = self.event_buffer.read();
         let mut new_head = match event_buffer.binary_search_by_key(
-            &(seq_int.j_window_time_end as u32 % self.params.read().loop_length),
-            |e| e.bar_pos,
+            &(1_000
+                * ((seq_int.j_window_time_end % (self.params.read().loop_length as f64)) as u32)),
+            |e| ((e.bar_pos * 1_000.) as u32),
         ) {
             Ok(idx) | Err(idx) => idx,
         };
@@ -252,7 +253,7 @@ impl BaseSeq {
 
     pub(self) fn change_note_len(
         &self,
-        target_note_len: u32,
+        target_note_len: f32,
         seq_int: &SeqInternal,
     ) -> anyhow::Result<()> {
         let mut params = self.params.write();
@@ -260,15 +261,14 @@ impl BaseSeq {
         for event in event_buff.iter_mut() {
             if let EventType::MidiNote(MidiNote { on_off, .. }) = event.e_type {
                 if !on_off {
-                    event.bar_pos = (event.bar_pos as i32 + target_note_len as i32
-                        - params.note_len_avg as i32) as u32;
+                    event.bar_pos = event.bar_pos + target_note_len - params.note_len_avg;
                     event.bar_pos %= params.loop_length;
                 }
             }
         }
         params.note_len_avg = target_note_len;
 
-        event_buff.sort_by_key(|e| e.bar_pos);
+        event_buff.sort_by_key(|e| (e.bar_pos * 1_000.) as u32);
         self.sync_event_head(seq_int);
         Ok(())
     }
@@ -378,7 +378,7 @@ impl SeqInternal {
         }
     }
 
-    pub fn event_in_cycle(&self, event_time: f64, loop_len: u32) -> bool {
+    pub fn event_in_cycle(&self, event_time: f64, loop_len: f32) -> bool {
         let win_start_looped = self.j_window_time_start % (loop_len as f64);
         let win_end_looped = self.j_window_time_end % (loop_len as f64);
         if win_start_looped < win_end_looped {

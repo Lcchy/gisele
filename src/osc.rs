@@ -33,7 +33,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/set_loop_length" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let loop_len = parse_to_int(osc_msg, 1)? as u32;
+            let loop_len = parse_to_float(osc_msg, 1)?;
             seq.change_loop_len(base_seq_id, loop_len)?;
         }
         "/gisele/regenerate" => {
@@ -47,7 +47,7 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
         }
         "/gisele/set_note_len" => {
             let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
-            let note_len = parse_to_int(osc_msg, 1)? as u32;
+            let note_len = parse_to_float(osc_msg, 1)?;
             seq.change_note_len(base_seq_id, note_len)?;
         }
         "/gisele/empty" => {
@@ -58,10 +58,10 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             seq.remove_base_seq(base_seq_id)?;
         }
         "/gisele/add_random_base" => {
-            let loop_length = parse_to_int(osc_msg, 0)? as u32;
+            let loop_length = parse_to_float(osc_msg, 0)?;
             let root_note = parse_to_int(osc_msg, 1)? as u8;
             let nb_events = parse_to_int(osc_msg, 2)? as u32;
-            let note_len_avg = parse_to_int(osc_msg, 3)? as u32;
+            let note_len_avg = parse_to_float(osc_msg, 3)?;
             let note_len_div = parse_to_float(osc_msg, 4)?;
             let velocity_avg = parse_to_int(osc_msg, 5)? as u8;
             let velocity_div = parse_to_float(osc_msg, 6)?;
@@ -79,11 +79,11 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             seq.add_base_seq(base_seq_params)?;
         }
         "/gisele/add_euclid_base" => {
-            let loop_length = parse_to_int(osc_msg, 0)? as u32;
+            let loop_length = parse_to_float(osc_msg, 0)?;
             let root_note = parse_to_int(osc_msg, 1)? as u8;
             let pulses = parse_to_int(osc_msg, 2)? as u32;
             let steps = parse_to_int(osc_msg, 3)? as u32;
-            let note_len_avg = parse_to_int(osc_msg, 4)? as u32;
+            let note_len_avg = parse_to_float(osc_msg, 4)?;
             let note_len_div = parse_to_float(osc_msg, 5)?;
             let velocity_avg = parse_to_int(osc_msg, 6)? as u8;
             let velocity_div = parse_to_float(osc_msg, 7)?;

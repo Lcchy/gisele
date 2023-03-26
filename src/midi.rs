@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use rand::Rng;
-use rand_distr::{Distribution, Normal};
+use rand_distr::{Distribution, Normal, Uniform};
 use rust_music_theory::{
     note::{Note, Notes, PitchClass},
     scale::{Direction, Mode, Scale, ScaleType},
@@ -77,13 +77,14 @@ pub fn gen_rand_midi_vec(rand_seq: &BaseSeq) -> Vec<Event> {
         .unwrap();
         let scale_notes = scale.notes();
         let velocity_distr = Normal::new(velocity_avg as f32, velocity_div).unwrap();
-        let note_len_distr = Normal::new(note_len_avg as f32, note_len_div).unwrap();
+        let note_len_distr = Normal::new(note_len_avg, note_len_div).unwrap();
+        let time_incr_distr = Uniform::new(0., loop_length);
 
-        let mut step_offset = 0;
+        let mut step_offset = 0.;
         for _ in 0..nb_events {
             let pitch = rng.gen_range(0..scale_notes.len());
             let velocity = velocity_distr.sample(&mut rng) as u8;
-            let note_len = note_len_distr.sample(&mut rng) as u32;
+            let note_len = note_len_distr.sample(&mut rng);
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
@@ -108,7 +109,7 @@ pub fn gen_rand_midi_vec(rand_seq: &BaseSeq) -> Vec<Event> {
 
             events_buffer.push(event_midi_on);
             events_buffer.push(event_midi_off);
-            let time_incr = rng.gen_range(0..loop_length);
+            let time_incr = time_incr_distr.sample(&mut rng);
             step_offset = (step_offset + time_incr) % loop_length;
         }
     } else {
@@ -167,28 +168,24 @@ pub fn gen_euclid_midi_vec(euclid_seq: &BaseSeq) -> anyhow::Result<Vec<Event>> {
         loop_length,
     } = params.clone()
     {
-        if loop_length % steps != 0 {
+        if loop_length % steps as f32 != 0. {
             eprintln!("Could not generate euclidean rhythm for indivisible loop-length.");
             return Ok(events_buffer);
         }
 
         let mut rng = rand::thread_rng();
         let velocity_distr = Normal::new(velocity_avg as f32, velocity_div).unwrap();
-        let note_len_distr = Normal::new(note_len_avg as f32, note_len_div).unwrap();
+        let note_len_distr = Normal::new(note_len_avg, note_len_div).unwrap();
 
-        let euclid_step_len_bar = loop_length / steps;
+        let euclid_step_len_bar = loop_length / (steps as f32);
         let euclid_rhythm = gen_euclid(pulses, steps)?;
 
         let pitch = note_to_midi_pitch(&root_note);
 
-        let mut time_offset = 0;
+        let mut time_offset = 0.;
         for i in euclid_rhythm {
-            if i == 0 {
-                continue;
-            }
-
             let velocity = velocity_distr.sample(&mut rng) as u8;
-            let note_len = note_len_distr.sample(&mut rng) as u32;
+            let note_len = note_len_distr.sample(&mut rng);
 
             let event_midi_on = Event {
                 e_type: EventType::MidiNote(MidiNote {
@@ -210,9 +207,15 @@ pub fn gen_euclid_midi_vec(euclid_seq: &BaseSeq) -> anyhow::Result<Vec<Event>> {
                 bar_pos: (time_offset + note_len) % loop_length,
                 id: euclid_seq.id,
             };
+
+            time_offset += euclid_step_len_bar;
+
+            if i == 0 {
+                continue;
+            }
+
             events_buffer.push(event_midi_on);
             events_buffer.push(event_midi_off);
-            time_offset += euclid_step_len_bar;
         }
     } else {
         eprintln!("Could not insert BaseSeq as its not Euclidean.")
