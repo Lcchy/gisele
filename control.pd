@@ -1,7 +1,7 @@
-#N canvas -10 32 1920 2079 12;
-#X obj 713 256 netsend -u -b;
-#X msg 712 34 connect 127.0.0.1 34254;
-#X msg 739 86 connect 10.244.1.228 34254;
+#N canvas -1 28 1920 1017 12;
+#X obj 713 -806 netsend -u -b;
+#X msg 712 -1028 connect 127.0.0.1 34254;
+#X msg 739 -976 connect 10.244.1.228 34254;
 #N canvas 387 832 1020 789 sub 0;
 #X obj 116 117 vradio 20 1 0 3 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0;
@@ -13,8 +13,8 @@
 #X connect 0 0 4 0;
 #X connect 4 0 5 0;
 #X coords 0 -1 2 2 100 90 2 100 100;
-#X restore 71 29 pd sub;
-#X obj 769 155 r osc_sender;
+#X restore 71 -1033 pd sub;
+#X obj 769 -907 r osc_sender;
 #N canvas 1979 504 1590 1137 set_note_len 0;
 #X obj 59 334 s osc_sender;
 #X obj 113 137 nbx 5 14 0 1e+37 0 1 empty empty empty 0 -8 0 10 #fcfcfc
@@ -36,7 +36,7 @@
 #X connect 7 2 4 1;
 #X connect 8 0 0 0;
 #X coords 0 -1 1 1 150 60 2 100 100;
-#X restore 194 29 pd set_note_len;
+#X restore 194 -1033 pd set_note_len;
 #N canvas -10 32 1920 2042 set_bpm 0;
 #X obj 117 206 s osc_sender;
 #X obj 117 134 nbx 5 14 1 9e+10 0 1 empty empty empty 0 -8 0 10 #fcfcfc
@@ -46,7 +46,7 @@
 #X connect 1 0 3 0;
 #X connect 3 0 0 0;
 #X coords 0 -1 1 1 85 60 2 100 100;
-#X restore 76 148 pd set_bpm;
+#X restore 76 -914 pd set_bpm;
 #N canvas 1979 504 1590 1137 set_loop_len 0;
 #X obj 127 164 hradio 25 1 1 8 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 5;
@@ -101,7 +101,7 @@
 #X connect 23 0 21 0;
 #X connect 25 0 10 0;
 #X coords 0 -1 1 1 254 159 2 100 100;
-#X restore 69 324 pd set_loop_len;
+#X restore 69 -738 pd set_loop_len;
 #N canvas 1960 377 1602 1065 regenerate 0;
 #X obj 116 136 nbx 5 14 0 1e+37 0 0 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 0 256;
@@ -117,7 +117,7 @@
 #X connect 5 0 6 0;
 #X connect 6 0 1 0;
 #X coords 0 -1 1 1 160 60 2 100 100;
-#X restore 71 244 pd regenerate;
+#X restore 71 -818 pd regenerate;
 #N canvas 1549 486 1492 1221 empty 0;
 #X obj 119 117 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
@@ -129,7 +129,7 @@
 #X connect 1 0 2 0;
 #X connect 2 0 4 0;
 #X coords 0 -1 1 1 100 50 2 100 100;
-#X restore 249 253 pd empty;
+#X restore 249 -809 pd empty;
 #N canvas 1549 486 1492 1221 set_root 0;
 #X obj 125 161 nbx 5 14 0 12 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 8 256;
@@ -169,7 +169,7 @@
 #X connect 16 2 9 1;
 #X connect 17 0 8 0;
 #X coords 0 -1 1 1 298 113 2 100 100;
-#X restore 196 116 pd set_root;
+#X restore 196 -946 pd set_root;
 #N canvas 1549 486 1492 1221 set_loop_len 0;
 #X obj 127 164 hradio 25 1 1 8 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 4;
@@ -227,7 +227,7 @@
 #X connect 26 1 5 0;
 #X connect 26 2 5 1;
 #X coords 0 -1 1 1 250 150 2 100 100;
-#X restore 346 328 pd set_loop_len;
+#X restore 346 -734 pd set_loop_len;
 #N canvas 2148 387 1492 1221 add_random_base 0;
 #X obj 119 229 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 94 256;
@@ -292,8 +292,8 @@
 #X connect 25 1 24 7;
 #X connect 26 0 11 0;
 #X coords 0 -1 1 1 280 170 2 100 100;
-#X restore 64 504 pd add_random_base;
-#N canvas 2148 387 1492 1221 add_random_base 1;
+#X restore 64 -558 pd add_random_base;
+#N canvas 945 295 965 706 add_random_base 0;
 #X obj 120 256 nbx 5 14 0 127 0 1 empty empty empty 0 -8 0 10 #fcfcfc
 #000000 #000000 127 256;
 #X obj 120 228 nbx 5 14 0 100000 0 1 empty empty empty 0 -8 0 10 #fcfcfc
@@ -364,11 +364,11 @@
 #X connect 27 0 25 0;
 #X connect 29 0 9 0;
 #X coords 0 -1 1 1 280 180 2 100 100;
-#X restore 64 694 pd add_random_base;
-#X msg 725 60 connect 192.168.0.239 34254;
-#X msg 753 116 disconnect;
-#X obj 769 179 list prepend send;
-#X obj 769 203 list trim;
+#X restore 64 -368 pd add_random_base;
+#X msg 725 -1002 connect 192.168.0.239 34254;
+#X msg 753 -946 disconnect;
+#X obj 769 -883 list prepend send;
+#X obj 769 -859 list trim;
 #N canvas 1979 504 1590 1137 remove 0;
 #X text 115 106 Remove Base Seq;
 #X obj 160 136 nbx 5 14 -1e+37 1e+37 0 1 empty empty empty 0 -8 0 10
@@ -383,7 +383,7 @@
 #X connect 4 0 3 0;
 #X connect 5 0 4 0;
 #X coords 0 -1 1 1 180 60 2 100 100;
-#X restore 383 501 pd remove;
+#X restore 383 -561 pd remove;
 #X connect 1 0 0 0;
 #X connect 2 0 0 0;
 #X connect 4 0 16 0;
@@ -391,4 +391,4 @@
 #X connect 15 0 0 0;
 #X connect 16 0 17 0;
 #X connect 17 0 0 0;
-#X coords 0 1039.5 1 1038.5 85 60 0;
+#X coords 0 1017 1 1016 85 60 0;

@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail};
+use jack::{MidiWriter, ProcessScope};
 use num_derive::FromPrimitive;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use rust_music_theory::note::Note;
@@ -6,6 +7,7 @@ use std::cmp::min;
 use std::sync::Arc;
 use strum::EnumString;
 
+use crate::jackp::send_event;
 use crate::midi::{gen_euclid_midi_vec, gen_rand_midi_vec, note_to_midi_pitch, MidiNote};
 use crate::seq::BaseSeqType::{Euclid, Random};
 
@@ -120,13 +122,43 @@ impl Sequencer {
         }
     }
 
+    pub fn notes_off(&self, ps: &ProcessScope, out_buff: &mut MidiWriter) {
+        let bar_pos = self.internal.read().curr_bar as f32;
+        let mut midi_chs = self
+            .base_seqs
+            .read()
+            .iter()
+            .map(|b| b.params.read().midi_ch)
+            .collect::<Vec<u8>>();
+        midi_chs.sort();
+        midi_chs.dedup();
+        for ch in midi_chs {
+            for pitch in 0..128 {
+                send_event(
+                    ps,
+                    out_buff,
+                    &Event {
+                        e_type: EventType::MidiNote(MidiNote {
+                            on_off: false,
+                            channel: ch,
+                            pitch,
+                            velocity: 1u8,
+                        }),
+                        bar_pos,
+                        id: 0,
+                    },
+                )
+            }
+        }
+    }
+
     pub fn remove_base_seq(&self, base_seq_id: u32) -> anyhow::Result<()> {
         let index = self
             .base_seqs
             .read()
             .iter()
             .position(|b| b.id == base_seq_id)
-            .ok_or(anyhow!("Could not find base sequence of id {base_seq_id}"))?;
+            .ok_or_else(|| anyhow!("Could not find base sequence of id {base_seq_id}"))?;
         self.base_seqs.write().remove(index);
         Ok(())
     }
