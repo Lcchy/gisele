@@ -123,7 +123,6 @@ impl Sequencer {
     }
 
     pub fn notes_off(&self, ps: &ProcessScope, out_buff: &mut MidiWriter) {
-        let bar_pos = self.internal.read().curr_bar as f32;
         let mut midi_chs = self
             .base_seqs
             .read()
@@ -144,7 +143,7 @@ impl Sequencer {
                             pitch,
                             velocity: 1u8,
                         }),
-                        bar_pos,
+                        bar_pos: 0.,
                         id: 0,
                     },
                 )

@@ -35,6 +35,7 @@ pub(crate) fn jack_process_closure(
             println!("Current bar: {new_curr_bar} ({})", new_curr_bar % 16);
         }
 
+        // In case of pause/stop, send notes off and reset sequencer
         let mut out_buff = midi_out.writer(ps);
         if seq_params.status == SeqStatus::Pause || seq_params.status == SeqStatus::Stop {
             seq_ref.notes_off(ps, &mut out_buff);
