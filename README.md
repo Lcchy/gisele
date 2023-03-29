@@ -47,7 +47,8 @@ Additionally: choose the correct parameter spaces for live user input.
 
 ### To fix:
 
-- Fix: Set loop len to 1, then to 16, gives a silent loop
+- Switch bars to FP32
+- Add notes_off vec in base_seq for easier stop logic in main loop
 - Have a stream of events consumed in the jack process, filled by an external thread for random deviation generation, based on base sequence (could be used for e.g. euclidian rhythm, as loop_len could be factored into each BaseSeq). Use a dynamic stream height depending on bpm, flush on param change. Or use a crossbeam::SeqQueue?
 
 - use frames for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames - inspi(see also links): https://github.com/free-creations/a2jmidi
@@ -58,8 +59,6 @@ Additionally: choose the correct parameter spaces for live user input.
 
 ### Steps:
 
-- Switch bars to FP32
-- Add notes_off vec in base_seq for easier stop logic in main loop
 - Add monophonic random base seq mode
 - Add random deviations (deviation cells) from BaseSeq: add gen_rand_note() in jack_process
 - SLICER
