@@ -57,7 +57,7 @@ pub(crate) fn jack_process_closure(
 
             loop {
                 let curr_event_head = *base_seq.event_head.read();
-                if let Some(next_event) = &event_buffer.get(curr_event_head) {
+                if let Some(ref next_event) = &event_buffer.get(curr_event_head) {
                     let push_event = seq_ref
                         .internal
                         .read()
@@ -66,8 +66,13 @@ pub(crate) fn jack_process_closure(
                     if loop_len <= next_event.bar_pos {
                         base_seq.incr_event_head();
                     } else if push_event {
-                        send_event(ps, &mut out_buff, next_event);
-                        base_seq.incr_event_head();
+                        // loop through connected fxProcessors
+                        for fx_proc_id in base_seq.fx_proc_ids.read().iter() {
+                            let fx_proc = seq_ref.get_fx_proc(*fx_proc_id);
+                            let rand_event = fx_proc.(next_event);
+                            send_event(ps, &mut out_buff, next_event);
+                            base_seq.incr_event_head();
+                        }
                     } else {
                         // Complete the current cycle when reaching a note to be played in the next one
                         break;

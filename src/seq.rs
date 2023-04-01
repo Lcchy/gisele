@@ -2,6 +2,8 @@ use anyhow::{anyhow, bail};
 use jack::{MidiWriter, ProcessScope};
 use num_derive::FromPrimitive;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
+use rand::rngs::ThreadRng;
+use rand_distr::{Distribution, Normal};
 use rust_music_theory::note::Note;
 use std::cmp::min;
 use std::sync::Arc;
@@ -16,8 +18,6 @@ pub struct Event {
     pub e_type: EventType,
     /// Nb bars from sequence start (i.e. position on grid)
     pub bar_pos: f32,
-    /// Ties the event to its [BaseSeq]
-    pub id: u32,
 }
 
 impl Event {
@@ -40,6 +40,8 @@ pub struct Sequencer {
     pub params: Arc<RwLock<SeqParams>>,
     /// Current state of the [BaseSeq]s, base sequences from which events are generated
     pub base_seqs: Arc<RwLock<Vec<BaseSeq>>>,
+    /// Effect processor state
+    pub fx_procs: Arc<RwLock<Vec<FxProcessor>>>,
     /// Internal sequencer parameters
     /// Write: Jack process, Read: OSC process
     pub internal: Arc<RwLock<SeqInternal>>,
@@ -56,6 +58,7 @@ impl Sequencer {
             params: Arc::new(RwLock::new(seq_params)),
             base_seqs: Arc::new(RwLock::new(vec![])),
             internal: Arc::new(RwLock::new(SeqInternal::new())),
+            fx_procs: Arc::new(RwLock::new(vec![])),
         }
     }
 
@@ -78,6 +81,17 @@ impl Sequencer {
             p.iter().find(|s| s.id == base_seq_id)
         })
         .map_err(|_| anyhow::format_err!("Base sequence {base_seq_id} could not be found."))
+    }
+
+    /// FxProcessor getter, mapping the lock contents in order to preserve the lifetime
+    pub fn get_fx_proc(
+        &self,
+        fx_proc_id: u32,
+    ) -> anyhow::Result<MappedRwLockReadGuard<FxProcessor>> {
+        RwLockReadGuard::try_map(self.fx_procs.read(), |p| {
+            p.iter().find(|f| f.id == fx_proc_id)
+        })
+        .map_err(|_| anyhow::format_err!("Base sequence {fx_proc_id} could not be found."))
     }
 
     pub fn regen_base_seq(&self, base_seq_id: u32) -> anyhow::Result<()> {
@@ -144,7 +158,6 @@ impl Sequencer {
                             velocity: 1u8,
                         }),
                         bar_pos: 0.,
-                        id: 0,
                     },
                 )
             }
@@ -219,6 +232,9 @@ pub struct BaseSeq {
     /// Events are ordered by their times
     /// Write: OSC process, Read: Jack process
     pub event_buffer: Arc<RwLock<Vec<Event>>>,
+    /// FxProcessor ids to which the BaseSeq feeds events
+    pub fx_proc_ids: Arc<RwLock<Vec<u32>>>,
+    /// Unique identifier to the base_seq
     pub id: u32,
 }
 
@@ -231,6 +247,7 @@ impl BaseSeq {
             params: Arc::new(RwLock::new(params)),
             event_head: Arc::new(RwLock::new(0)),
             event_buffer: Arc::new(RwLock::new(vec![])),
+            fx_proc_ids: Arc::new(RwLock::new(vec![])),
             id,
         };
         base_seq.gen_fill(seq_int)?;
@@ -371,6 +388,46 @@ pub struct RandomBase {
 pub struct EuclidBase {
     pub pulses: u32,
     pub steps: u32,
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// Effect Event processor
+
+struct FxProcessor {
+    rng: ThreadRng,
+    distr: Normal<f64>,
+    // processor: Box<dyn Fn(Event) -> Event>,
+    /// Unique identifier to the FxProcessors
+    pub id: u32,
+}
+
+impl FxProcessor {
+    fn new(id: u32) -> Self {
+        let rng = rand::thread_rng();
+        let distr = Normal::new(0., 1.).unwrap();
+        // let processor = Box::new(|e| -> return e);
+        FxProcessor {
+            rng,
+            distr,
+            // processor,
+            id,
+        }
+    }
+
+    //TODO rewrite
+    fn process(&self, event: &Event) -> Event {
+        let new_pitch = match event.e_type {
+            EventType::MidiNote(ref mut note) => {
+                note.pitch as f64 + self.distr.sample(&mut self.rng)
+            }
+            EventType::_Fill => todo!(),
+        };
+        let mut n_event = event.clone();
+        if let EventType::MidiNote(ref mut note) = n_event.e_type {
+            note.pitch = new_pitch as u8;
+        }
+        n_event
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
