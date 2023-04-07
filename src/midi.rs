@@ -94,7 +94,6 @@ pub fn gen_rand_midi_vec(rand_seq: &BaseSeq) -> Vec<Event> {
                     on_off: true,
                 }),
                 bar_pos: step_offset,
-                id: rand_seq.id,
             };
             let event_midi_off = Event {
                 e_type: EventType::MidiNote(MidiNote {
@@ -104,7 +103,6 @@ pub fn gen_rand_midi_vec(rand_seq: &BaseSeq) -> Vec<Event> {
                     on_off: false,
                 }),
                 bar_pos: (step_offset + note_len) % loop_length,
-                id: rand_seq.id,
             };
 
             events_buffer.push(event_midi_on);
@@ -195,7 +193,6 @@ pub fn gen_euclid_midi_vec(euclid_seq: &BaseSeq) -> anyhow::Result<Vec<Event>> {
                     on_off: true,
                 }),
                 bar_pos: time_offset,
-                id: euclid_seq.id,
             };
             let event_midi_off = Event {
                 e_type: EventType::MidiNote(MidiNote {
@@ -205,7 +202,6 @@ pub fn gen_euclid_midi_vec(euclid_seq: &BaseSeq) -> anyhow::Result<Vec<Event>> {
                     on_off: false,
                 }),
                 bar_pos: (time_offset + note_len) % loop_length,
-                id: euclid_seq.id,
             };
 
             time_offset += euclid_step_len_bar;

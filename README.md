@@ -48,11 +48,9 @@ Additionally: choose the correct parameter spaces for live user input.
 ### To fix:
 
 - Switch bars to FP32
-- Add notes_off vec in base_seq for easier stop logic in main loop
 - Have a stream of events consumed in the jack process, filled by an external thread for random deviation generation, based on base sequence (could be used for e.g. euclidian rhythm, as loop_len could be factored into each BaseSeq). Use a dynamic stream height depending on bpm, flush on param change. Or use a crossbeam::SeqQueue?
 
 - use frames for precise timing, as a process cycle is 42ms, see jack doc. This should allow to map events on specific frames - inspi(see also links): https://github.com/free-creations/a2jmidi
-- factorize main jack event loop into structs for clarity, see it as a sliding window with a semi-synced peek
 - For OSC-out use a thread-pool of osc_senders channels to which we offload from the jack_process.
 - Clean up unwraps and [idx]
 - Optimize sync_event_head: set to event in curr jack window if we know the cycle to be just about to play | Ambitious and secondary

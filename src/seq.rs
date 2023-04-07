@@ -2,6 +2,9 @@ use anyhow::{anyhow, bail};
 use jack::{MidiWriter, ProcessScope};
 use num_derive::FromPrimitive;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use rand_distr::{Distribution, Normal};
 use rust_music_theory::note::Note;
 use std::cmp::min;
 use std::sync::Arc;
@@ -16,8 +19,6 @@ pub struct Event {
     pub e_type: EventType,
     /// Nb bars from sequence start (i.e. position on grid)
     pub bar_pos: f32,
-    /// Ties the event to its [BaseSeq]
-    pub id: u32,
 }
 
 impl Event {
@@ -40,6 +41,8 @@ pub struct Sequencer {
     pub params: Arc<RwLock<SeqParams>>,
     /// Current state of the [BaseSeq]s, base sequences from which events are generated
     pub base_seqs: Arc<RwLock<Vec<BaseSeq>>>,
+    /// Effect processor state
+    pub fx_procs: Arc<RwLock<Vec<FxProcessor>>>,
     /// Internal sequencer parameters
     /// Write: Jack process, Read: OSC process
     pub internal: Arc<RwLock<SeqInternal>>,
@@ -50,25 +53,31 @@ impl Sequencer {
         let seq_params = SeqParams {
             status: SeqStatus::Stop,
             bpm,
-            base_seq_incr: 0,
+            incr: 0,
         };
         Sequencer {
             params: Arc::new(RwLock::new(seq_params)),
             base_seqs: Arc::new(RwLock::new(vec![])),
             internal: Arc::new(RwLock::new(SeqInternal::new())),
+            fx_procs: Arc::new(RwLock::new(vec![])),
         }
     }
 
     pub fn add_base_seq(&self, base_seq_params: BaseSeqParams) -> anyhow::Result<()> {
         let mut seq_params = self.params.write();
-        let base_seq = BaseSeq::new_fill(
-            base_seq_params,
-            seq_params.base_seq_incr,
-            &self.internal.read(),
-        )?;
+        let base_seq = BaseSeq::new_fill(base_seq_params, seq_params.incr, &self.internal.read())?;
         self.base_seqs.write().push(base_seq);
-        println!("Inserted base sequence id {}", seq_params.base_seq_incr);
-        seq_params.base_seq_incr += 1;
+        println!("Inserted base sequence id {}", seq_params.incr);
+        seq_params.incr += 1;
+        Ok(())
+    }
+
+    pub fn add_fx_processor(&self) -> anyhow::Result<()> {
+        let mut seq_params = self.params.write();
+        let fx_proc = FxProcessor::new(seq_params.incr);
+        self.fx_procs.write().push(fx_proc);
+        println!("Inserted fx processor id {}", seq_params.incr);
+        seq_params.incr += 1;
         Ok(())
     }
 
@@ -78,6 +87,17 @@ impl Sequencer {
             p.iter().find(|s| s.id == base_seq_id)
         })
         .map_err(|_| anyhow::format_err!("Base sequence {base_seq_id} could not be found."))
+    }
+
+    /// FxProcessor getter, mapping the lock contents in order to preserve the lifetime
+    pub fn get_fx_proc(
+        &self,
+        fx_proc_id: u32,
+    ) -> anyhow::Result<MappedRwLockReadGuard<FxProcessor>> {
+        RwLockReadGuard::try_map(self.fx_procs.read(), |p| {
+            p.iter().find(|f| f.id == fx_proc_id)
+        })
+        .map_err(|_| anyhow::format_err!("Base sequence {fx_proc_id} could not be found."))
     }
 
     pub fn regen_base_seq(&self, base_seq_id: u32) -> anyhow::Result<()> {
@@ -113,7 +133,7 @@ impl Sequencer {
     pub fn empty(&self) {
         *self.base_seqs.write() = vec![];
         let mut seq_params = self.params.write();
-        seq_params.base_seq_incr = 0;
+        seq_params.incr = 0;
     }
 
     pub fn reset_base_seqs(&self) {
@@ -144,7 +164,6 @@ impl Sequencer {
                             velocity: 1u8,
                         }),
                         bar_pos: 0.,
-                        id: 0,
                     },
                 )
             }
@@ -161,6 +180,14 @@ impl Sequencer {
         self.base_seqs.write().remove(index);
         Ok(())
     }
+
+    pub fn process_event(&self, proc_ids: &Vec<u32>, event: &mut Event) {
+        for fx_proc_id in proc_ids {
+            if let Ok(fx_proc) = self.get_fx_proc(*fx_proc_id) {
+                fx_proc.process(event);
+            }
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, EnumString, Debug, FromPrimitive)]
@@ -176,8 +203,8 @@ pub enum SeqStatus {
 pub struct SeqParams {
     pub status: SeqStatus,
     pub bpm: f32,
-    /// Counter of total nb of BaseSeqs ever created, used for [BaseSeq] id
-    pub base_seq_incr: u32,
+    /// Counter of total nb of BaseSeqs/FxProcessor ever created, used for id
+    pub incr: u32,
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -219,6 +246,9 @@ pub struct BaseSeq {
     /// Events are ordered by their times
     /// Write: OSC process, Read: Jack process
     pub event_buffer: Arc<RwLock<Vec<Event>>>,
+    /// FxProcessor ids to which the BaseSeq feeds events
+    pub fx_proc_ids: Arc<RwLock<Vec<u32>>>,
+    /// Unique identifier to the base_seq
     pub id: u32,
 }
 
@@ -231,6 +261,7 @@ impl BaseSeq {
             params: Arc::new(RwLock::new(params)),
             event_head: Arc::new(RwLock::new(0)),
             event_buffer: Arc::new(RwLock::new(vec![])),
+            fx_proc_ids: Arc::new(RwLock::new(vec![])),
             id,
         };
         base_seq.gen_fill(seq_int)?;
@@ -371,6 +402,41 @@ pub struct RandomBase {
 pub struct EuclidBase {
     pub pulses: u32,
     pub steps: u32,
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// Effect Event processor
+
+pub struct FxProcessor {
+    rng: Arc<RwLock<StdRng>>,
+    distr: Normal<f64>,
+    // processor: Box<dyn Fn(Event) -> Event>,
+    /// Unique identifier to the FxProcessors
+    pub id: u32,
+}
+
+impl FxProcessor {
+    fn new(id: u32) -> Self {
+        let rng = Arc::new(RwLock::new(rand::rngs::StdRng::from_entropy()));
+        let distr = Normal::new(0., 1.).unwrap();
+        // let processor = Box::new(|e| -> return e);
+        FxProcessor {
+            rng,
+            distr,
+            // processor,
+            id,
+        }
+    }
+
+    pub(crate) fn process(&self, event: &mut Event) {
+        match event.e_type {
+            EventType::MidiNote(ref mut note) => {
+                let rng_guard = &mut *self.rng.write();
+                note.pitch = (note.pitch as f64 + self.distr.sample(rng_guard)) as u8;
+            }
+            EventType::_Fill => todo!(),
+        };
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
