@@ -53,7 +53,7 @@ impl Sequencer {
         let seq_params = SeqParams {
             status: SeqStatus::Stop,
             bpm,
-            base_seq_incr: 0,
+            incr: 0,
         };
         Sequencer {
             params: Arc::new(RwLock::new(seq_params)),
@@ -65,27 +65,19 @@ impl Sequencer {
 
     pub fn add_base_seq(&self, base_seq_params: BaseSeqParams) -> anyhow::Result<()> {
         let mut seq_params = self.params.write();
-        let base_seq = BaseSeq::new_fill(
-            base_seq_params,
-            seq_params.base_seq_incr,
-            &self.internal.read(),
-        )?;
+        let base_seq = BaseSeq::new_fill(base_seq_params, seq_params.incr, &self.internal.read())?;
         self.base_seqs.write().push(base_seq);
-        println!("Inserted base sequence id {}", seq_params.base_seq_incr);
-        seq_params.base_seq_incr += 1;
+        println!("Inserted base sequence id {}", seq_params.incr);
+        seq_params.incr += 1;
         Ok(())
     }
 
     pub fn add_fx_processor(&self) -> anyhow::Result<()> {
         let mut seq_params = self.params.write();
-        let fx_proc = FxProcessor::new(
-            base_seq_params,
-            seq_params.base_seq_incr,
-            &self.internal.read(),
-        )?;
-        self.base_seqs.write().push(base_seq);
-        println!("Inserted base sequence id {}", seq_params.base_seq_incr);
-        seq_params.base_seq_incr += 1;
+        let fx_proc = FxProcessor::new(seq_params.incr);
+        self.fx_procs.write().push(fx_proc);
+        println!("Inserted fx processor id {}", seq_params.incr);
+        seq_params.incr += 1;
         Ok(())
     }
 
@@ -141,7 +133,7 @@ impl Sequencer {
     pub fn empty(&self) {
         *self.base_seqs.write() = vec![];
         let mut seq_params = self.params.write();
-        seq_params.base_seq_incr = 0;
+        seq_params.incr = 0;
     }
 
     pub fn reset_base_seqs(&self) {
@@ -211,8 +203,8 @@ pub enum SeqStatus {
 pub struct SeqParams {
     pub status: SeqStatus,
     pub bpm: f32,
-    /// Counter of total nb of BaseSeqs ever created, used for [BaseSeq] id
-    pub base_seq_incr: u32,
+    /// Counter of total nb of BaseSeqs/FxProcessor ever created, used for id
+    pub incr: u32,
 }
 
 //////////////////////////////////////////////////////////////////////////
