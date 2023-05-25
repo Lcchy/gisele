@@ -24,7 +24,7 @@ pub struct Event {
 impl Event {
     fn _is_note_on_off(&self) -> bool {
         match self.e_type {
-            EventType::MidiNote(n) => n.on_off,
+            EventType::MidiNoteOn(n) | EventType::MidiNoteOff(n) => n.on_off,
             EventType::_Fill => unimplemented!(),
         }
     }
@@ -32,7 +32,8 @@ impl Event {
 
 #[derive(Debug, Clone)]
 pub enum EventType {
-    MidiNote(MidiNote),
+    MidiNoteOn(MidiNote),
+    MidiNoteOff(MidiNote),
     _Fill,
 }
 
@@ -72,9 +73,11 @@ impl Sequencer {
         Ok(())
     }
 
-    pub fn add_fx_processor(&self) -> anyhow::Result<()> {
+    pub fn add_fx_processor(&self, base_seq_id: u32) -> anyhow::Result<()> {
         let mut seq_params = self.params.write();
         let fx_proc = FxProcessor::new(seq_params.incr);
+        let base_seq = self.get_base_seq(base_seq_id)?;
+        base_seq.fx_proc_ids.write().push(fx_proc.id);
         self.fx_procs.write().push(fx_proc);
         println!("Inserted fx processor id {}", seq_params.incr);
         seq_params.incr += 1;
@@ -157,7 +160,7 @@ impl Sequencer {
                     ps,
                     out_buff,
                     &Event {
-                        e_type: EventType::MidiNote(MidiNote {
+                        e_type: EventType::MidiNoteOff(MidiNote {
                             on_off: false,
                             channel: ch,
                             pitch,
@@ -321,7 +324,9 @@ impl BaseSeq {
         let mut params = self.params.write();
         let mut event_buff = self.event_buffer.write();
         for event in event_buff.iter_mut() {
-            if let EventType::MidiNote(MidiNote { on_off, .. }) = event.e_type {
+            if let EventType::MidiNoteOn(MidiNote { on_off, .. })
+            | EventType::MidiNoteOff(MidiNote { on_off, .. }) = event.e_type
+            {
                 if !on_off {
                     event.bar_pos = event.bar_pos + target_note_len - params.note_len_avg;
                     event.bar_pos %= params.loop_length;
@@ -361,7 +366,9 @@ impl BaseSeq {
         let target_root_note_midi = note_to_midi_pitch(&target_root_note);
         let pitch_diff = target_root_note_midi as i32 - root_note_midi as i32;
         for event in self.event_buffer.write().iter_mut() {
-            if let EventType::MidiNote(MidiNote { ref mut pitch, .. }) = event.e_type {
+            if let EventType::MidiNoteOn(MidiNote { ref mut pitch, .. })
+            | EventType::MidiNoteOff(MidiNote { ref mut pitch, .. }) = event.e_type
+            {
                 *pitch = (*pitch as i32 + pitch_diff).clamp(0, 127) as u8;
             }
         }

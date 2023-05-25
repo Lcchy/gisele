@@ -115,7 +115,9 @@ fn osc_handling(osc_msg: &OscMessage, seq: &Arc<Sequencer>) -> anyhow::Result<()
             eprintln!("BPM set to {}", seq.params.read().bpm);
         }
         "/gisele/add_fx_processor" => {
-            seq.add_fx_processor()?;
+            // The id of the base seq that will be connected to this fx_proc
+            let base_seq_id = parse_to_int(osc_msg, 0)? as u32;
+            seq.add_fx_processor(base_seq_id)?;
         }
         _ => bail!("OSC path was not recognized"),
     }
